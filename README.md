@@ -4,6 +4,8 @@ A wallet and transaction risk scanner for **Monad Testnet**, with a small public
 where anyone can record a risk **signal** about an address. Built for the Monad Metropolis
 hackathon, track *Trust, Identity & AI Infrastructure*.
 
+**Live app:** https://sentinelscan-monad.vercel.app
+
 > **Testnet only.** Everything here runs on Monad Testnet (chain ID 10143). Testnet MON has no
 > real value, and the app never asks for real money.
 

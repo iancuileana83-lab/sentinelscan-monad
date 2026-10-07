@@ -8,3 +8,7 @@ artifacts
 cache
 typechain-types
 coverage
+
+.vercel
+.env*
+!.env.example
