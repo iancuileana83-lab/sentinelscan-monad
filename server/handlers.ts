@@ -1,5 +1,6 @@
 // Shared by the Vercel functions in /api and by the dev server in vite.config.ts.
 import { fetchTxData, fetchWalletData } from './monad.ts';
+import { readRegistry } from './registry.ts';
 
 export interface HandlerResult {
   status: number;
@@ -23,6 +24,18 @@ export async function walletScan(address: unknown, apiKey: string | undefined): 
     const warning =
       data.txCount === 0 && data.tokens.length === 0 ? 'No on-chain activity found for this address on Monad Testnet.' : undefined;
     return { status: 200, body: { data, warning } };
+  } catch (e) {
+    return fail(502, e instanceof Error ? e.message : 'Unknown server error');
+  }
+}
+
+export async function registryView(subject: unknown, reporter: unknown): Promise<HandlerResult> {
+  if (typeof subject !== 'string' || !ADDRESS.test(subject.trim())) {
+    return fail(400, 'Enter a valid wallet address: 0x followed by 40 hex characters.');
+  }
+  const who = typeof reporter === 'string' && ADDRESS.test(reporter.trim()) ? reporter.trim() : undefined;
+  try {
+    return { status: 200, body: { data: await readRegistry(subject.trim(), who) } };
   } catch (e) {
     return fail(502, e instanceof Error ? e.message : 'Unknown server error');
   }

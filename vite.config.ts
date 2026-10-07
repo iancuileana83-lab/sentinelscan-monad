@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
-import { txScan, walletScan } from './server/handlers.ts';
+import { registryView, txScan, walletScan } from './server/handlers.ts';
 
 // In development the same handlers that Vercel runs in production are served here,
 // so the Etherscan key stays on the server side of the dev machine too.
@@ -16,7 +16,9 @@ function devApi(apiKey: string | undefined): Plugin {
             ? () => walletScan(url.searchParams.get('address'), apiKey)
             : url.pathname === '/api/tx-scan'
               ? () => txScan(url.searchParams.get('hash'), apiKey)
-              : null;
+              : url.pathname === '/api/registry'
+                ? () => registryView(url.searchParams.get('address'), url.searchParams.get('reporter'))
+                : null;
         if (!run) return next();
         const result = await run();
         res.statusCode = result.status;

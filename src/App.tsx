@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { AlertCircle, ArrowRight, Loader2, Search, ShieldCheck, Wallet } from 'lucide-react';
 import RiskGauge from '@/components/RiskGauge';
 import RiskExplainer from '@/components/RiskExplainer';
+import RegistryPanel from '@/components/RegistryPanel';
+import { pickReasonCode } from '@/lib/registryConfig';
 import { assessWalletRisk, type WalletData, type WalletRiskAssessment } from '@/lib/walletRisk';
 import { assessTxRisk, type TxData, type TxRiskAssessment } from '@/lib/txRisk';
 import { explainTxRisk, explainWalletRisk, type RiskExplanation } from '@/lib/riskExplainer';
@@ -23,6 +25,7 @@ interface Result {
   explanation: RiskExplanation;
   facts: { label: string; value: string }[];
   warning?: string;
+  reasonCode?: number;
 }
 
 const severityStyle: Record<Factor['severity'], string> = {
@@ -71,6 +74,7 @@ export default function App() {
           factors: a.riskFactors,
           explanation: explainWalletRisk(data, a),
           warning,
+          reasonCode: pickReasonCode(a.riskFactors),
           facts: [
             { label: 'Balance', value: fromWei(data.balanceWei) },
             { label: 'Transactions (latest 100)', value: String(data.txCount) },
@@ -202,6 +206,10 @@ export default function App() {
                 </div>
               ))}
             </div>
+
+            {result.mode === 'wallet' && (
+              <RegistryPanel subject={result.target} score={result.score} reasonCode={result.reasonCode ?? 0} />
+            )}
 
             <RiskExplainer explanation={result.explanation} type={result.mode} />
           </section>

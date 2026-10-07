@@ -13,6 +13,7 @@
     "compile": "hardhat compile"
   },
   "dependencies": {
+    "ethers": "^6.17.0",
     "lucide-react": "^0.446.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
