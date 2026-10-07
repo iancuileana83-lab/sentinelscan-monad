@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
-import { guardView, registryFeed, registryView, reporterView, txScan, walletScan, type HandlerResult } from './server/handlers.ts';
+import { guardView, radarView, registryFeed, registryView, reporterView, txScan, walletScan, type HandlerResult } from './server/handlers.ts';
 import { mcpRoute, toolsRoute } from './server/agentApi.ts';
 import { agentDemoRoute, aiStatusRoute, analystRoute } from './server/aiRoutes.ts';
 
@@ -17,6 +17,7 @@ function devApi(env: Record<string, string | undefined>): Plugin {
     '/api/registry-feed': (u) => registryFeed(q(u, 'subject'), q(u, 'reporter'), apiKey),
     '/api/reporter': (u) => reporterView(q(u, 'address'), apiKey),
     '/api/guard': (u) => guardView(q(u, 'address')),
+    '/api/radar': (u) => radarView(q(u, 'after'), apiKey),
   };
   return {
     name: 'sentinelscan-dev-api',
@@ -41,6 +42,8 @@ function devApi(env: Record<string, string | undefined>): Plugin {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
+  // Server code reads optional settings (such as ENVIO_API_TOKEN) from process.env, as it does on Vercel.
+  if (env.ENVIO_API_TOKEN && !process.env.ENVIO_API_TOKEN) process.env.ENVIO_API_TOKEN = env.ENVIO_API_TOKEN;
   return {
     plugins: [react(), devApi(env)],
     resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },

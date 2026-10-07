@@ -5,6 +5,7 @@ import { readReporter, readWeighted } from './weighted.ts';
 import { registryEvents, registryOverview } from './registryFeed.ts';
 import { txView, walletView } from './views.ts';
 import { guardQuote } from './guard.ts';
+import { radarSince } from './radar.ts';
 
 export interface HandlerResult {
   status: number;
@@ -95,6 +96,15 @@ export async function guardView(address: unknown): Promise<HandlerResult> {
   if (typeof address !== 'string' || !ADDRESS.test(address.trim())) return fail(400, 'Enter a valid wallet address: 0x followed by 40 hex characters.');
   try {
     return { status: 200, body: { data: await guardQuote(address.trim()) } };
+  } catch (e) {
+    return fail(502, e instanceof Error ? e.message : 'Unknown server error');
+  }
+}
+
+export async function radarView(after: unknown, apiKey: string | undefined): Promise<HandlerResult> {
+  const n = typeof after === 'string' && /^\d{1,12}$/.test(after) ? Number(after) : 0;
+  try {
+    return { status: 200, body: { data: await radarSince(n, apiKey) } };
   } catch (e) {
     return fail(502, e instanceof Error ? e.message : 'Unknown server error');
   }

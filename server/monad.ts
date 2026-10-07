@@ -8,15 +8,19 @@ export const NETWORK = 'monad-testnet';
 const EXPLORER_API = 'https://api.etherscan.io/v2/api';
 
 // The first two answer fast; the main public RPC sometimes stalls on some calls.
-const RPC_URLS = [
-  'https://rpc-testnet.monadinfra.com',
-  'https://rpc.ankr.com/monad_testnet',
-  'https://testnet-rpc.monad.xyz',
-];
+const PUBLIC_RPC_URLS = ['https://rpc-testnet.monadinfra.com', 'https://rpc.ankr.com/monad_testnet', 'https://testnet-rpc.monad.xyz'];
+
+/** Envio HyperRPC goes first when a free Envio token is configured; the public endpoints remain the fallback. */
+function rpcUrls(): string[] {
+  const token = process.env.ENVIO_API_TOKEN;
+  return token ? [`https://monad-testnet.rpc.hypersync.xyz/${token}`, ...PUBLIC_RPC_URLS] : PUBLIC_RPC_URLS;
+}
+
+export const upstreamName = () => (process.env.ENVIO_API_TOKEN ? 'Envio HyperRPC' : 'public Monad RPC');
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export async function rpc<T = unknown>(method: string, params: unknown[], urls = RPC_URLS): Promise<T> {
+export async function rpc<T = unknown>(method: string, params: unknown[], urls = rpcUrls()): Promise<T> {
   let lastError = 'no RPC answered';
   for (const url of urls) {
     try {
@@ -37,6 +41,34 @@ export async function rpc<T = unknown>(method: string, params: unknown[], urls =
     }
   }
   throw new Error(`Monad Testnet RPC unavailable (${lastError}). Please try again.`);
+}
+
+/** Several calls in one request. Falls back to single calls when an endpoint does not do batches. */
+export async function rpcBatch<T = unknown>(calls: { method: string; params: unknown[] }[]): Promise<(T | null)[]> {
+  if (calls.length === 0) return [];
+  const urls = rpcUrls();
+  // Ankr and HyperRPC answer batches; the foundation endpoint does not.
+  const ordered = [...urls.filter((u) => !u.includes('monadinfra')), ...urls.filter((u) => u.includes('monadinfra'))];
+  for (const url of ordered) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(calls.map((c, i) => ({ jsonrpc: '2.0', id: i, method: c.method, params: c.params }))),
+        signal: AbortSignal.timeout(8000),
+      });
+      const body = (await res.json()) as { id: number; result?: T }[];
+      if (!Array.isArray(body)) continue;
+      const out: (T | null)[] = calls.map(() => null);
+      for (const r of body) if (typeof r.id === 'number' && r.id < out.length) out[r.id] = r.result ?? null;
+      return out;
+    } catch {
+      // try the next endpoint
+    }
+  }
+  const out: (T | null)[] = [];
+  for (const c of calls) out.push(await rpc<T>(c.method, c.params).catch(() => null));
+  return out;
 }
 
 interface ExplorerReply {

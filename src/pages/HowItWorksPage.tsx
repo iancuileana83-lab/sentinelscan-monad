@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeftRight, BookOpen, Database, Gauge, Lightbulb, Scale, ShieldCheck, TriangleAlert, Wallet } from 'lucide-react';
+import { ArrowLeftRight, BookOpen, Database, Gauge, Lightbulb, Scale, ShieldCheck, Sparkles, TriangleAlert, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/Card';
 import { LEVELS, LIMITS, TX_RULES, WALLET_RULES, type Rule } from '@/lib/rules';
@@ -144,6 +144,15 @@ export default function HowItWorksPage() {
         <p className="mt-3 text-xs text-faint">
           Try it on any <Link className="underline" to="/">address page</Link>. The demo address has two test reporters and is blocked; the system account needs a confirmation.
         </p>
+      </Card>
+
+      <Card title="The AI parts" icon={Sparkles}>
+        <ul className="list-disc space-y-1 pl-5 text-sm text-muted">
+          <li>The payment agent and the analyst are language models that only see numbered evidence from our own scan and the registry. Each claim must cite evidence ids; claims that cite nothing real are removed.</li>
+          <li>Token names, symbols and other text chosen by contract deployers never reach the model, because they could carry instructions.</li>
+          <li>The agent cannot override the on-chain guard: a blocked address is always refused, and a risky one always goes to a human. If the model fails, a plain answer built from the same evidence is shown.</li>
+          <li>The agent never sends money. Runs are limited per visitor and per day, and the AI can be switched off at once.</li>
+        </ul>
       </Card>
 
       <Card title="Reputation weights (off-chain)" icon={Scale}>

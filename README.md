@@ -17,7 +17,8 @@ hackathon, track *Trust, Identity & AI Infrastructure*.
 | **Registry** `/registry` | Everything recorded in RiskRegistry, rebuilt from its events: stats, most-reported addresses, recent activity |
 | **Address** `/address/0x…` | A shareable page for one address: scan, public signals (plain and reputation-weighted), full history |
 | **Reporter** `/reporter/0x…` | One reporter's weight, how it is built, and everything they recorded or retracted |
-| **For AI agents** `/agents` | The read-only MCP and JSON tools, with a live playground |
+| **Live radar** `/radar` | New blocks as they arrive (a few per second), with quick hints: payments to addresses that have live registry signals, null-address sends, self-transfers, very large transfers |
+| **For AI agents** `/agents` | The read-only MCP and JSON tools, a live playground, and a real model-driven agent that decides whether to pay an address and cites evidence |
 | **How it works** `/how-it-works` | Every scoring rule with its points, the reputation formula with a calculator, and the honest limits |
 
 ## What it does
@@ -147,6 +148,8 @@ is a new, standalone app. What is reused and what is new:
 - A new standalone app and backend. The earlier project depended on Supabase Edge Functions. This
   one uses a few small serverless functions in `api/` that keep the explorer key on the server.
 - **Read-only AI-agent tools**: an MCP server and a JSON API with schemas (`server/tools.ts`, `server/mcp.ts`), plus a demo client (`examples/agent-demo.mjs`).
+- **AI agent and analyst**: an evidence-cited payment agent (Gemini via an OpenAI-compatible client; Qwen also supported) that can never override the on-chain guard, plus a short analyst on wallet scans. Every claim must cite numbered evidence, token names never reach the model, limits and a kill switch are built in (`server/agent.ts`, `server/analyst.ts`, `server/aiGuard.ts`).
+- **Live risk radar**: follows new blocks and flags transactions using only block data and the public registry (`server/radar.ts`).
 - **GuardedPay**: an on-chain guard that consults the registry before forwarding a payment, deployed and verified, with 11 tests.
 - **Reputation-weighted signals**: off-chain weights from reporter wallet history (`server/reputation.ts`, `server/events.ts`, `server/weighted.ts`), shown in the app and returned to agents.
 - Tests for the scoring, the agent tools, the weighting and the app's contract address, and this documentation.

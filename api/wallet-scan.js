@@ -5438,6 +5438,9 @@ function walletView(r) {
 // server/guard.ts
 var iface3 = new Interface(GUARD_ABI);
 
+// server/radar.ts
+var LARGE_VALUE_WEI = 100n * 10n ** 18n;
+
 // server/handlers.ts
 var ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 function fail(status, error) {

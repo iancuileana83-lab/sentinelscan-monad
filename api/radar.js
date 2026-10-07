@@ -3,6 +3,7 @@
 // src/lib/registryConfig.ts
 var REGISTRY_ADDRESS = "0xb0C3Be753788a5962DE52db929f49df02700AFd4";
 var GUARD_ADDRESS = "0x6e124EB8B980ae3e1CB79f856b8dC0d6F691d5bD";
+var GUARD_POLICY = { confirmScore: 40, blockScore: 70, minReportersToConfirm: 1, minReportersToBlock: 2 };
 var DEMO_TARGET = "0x3dc0Cc8bc1BbED963Fc2841b9a975Ab933A94F42";
 var KNOWN_LABELS = {
   [REGISTRY_ADDRESS.toLowerCase()]: "RiskRegistry contract",
@@ -12,22 +13,63 @@ var KNOWN_LABELS = {
   "0x0c6b75389a0d48f2eb16cc91022728fb6cbe7fc5": "Project test wallet",
   "0x6f49a8f621353f12378d0046e7d7e4b9b249dc9e": "System account (staking rewards)"
 };
-var REASON_LABELS = [
-  "Other",
-  "Very new wallet",
-  "High-frequency counterparty",
-  "Single counterparty",
-  "One-way outflow",
-  "Null-address interaction",
-  "Failed or unusual transaction",
-  "Contract deployment",
-  "Large transfer"
-];
 
 // server/monad.ts
 var CHAIN_ID = 10143;
 var EXPLORER_API = "https://api.etherscan.io/v2/api";
+var PUBLIC_RPC_URLS = ["https://rpc-testnet.monadinfra.com", "https://rpc.ankr.com/monad_testnet", "https://testnet-rpc.monad.xyz"];
+function rpcUrls() {
+  const token = process.env.ENVIO_API_TOKEN;
+  return token ? [`https://monad-testnet.rpc.hypersync.xyz/${token}`, ...PUBLIC_RPC_URLS] : PUBLIC_RPC_URLS;
+}
+var upstreamName = () => process.env.ENVIO_API_TOKEN ? "Envio HyperRPC" : "public Monad RPC";
 var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function rpc(method, params, urls = rpcUrls()) {
+  let lastError = "no RPC answered";
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+        signal: AbortSignal.timeout(8e3)
+      });
+      const body = await res.json();
+      if (body.error) {
+        lastError = body.error.message;
+        continue;
+      }
+      return body.result;
+    } catch (e) {
+      lastError = e instanceof Error ? e.name : "RPC error";
+    }
+  }
+  throw new Error(`Monad Testnet RPC unavailable (${lastError}). Please try again.`);
+}
+async function rpcBatch(calls) {
+  if (calls.length === 0) return [];
+  const urls = rpcUrls();
+  const ordered = [...urls.filter((u) => !u.includes("monadinfra")), ...urls.filter((u) => u.includes("monadinfra"))];
+  for (const url of ordered) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(calls.map((c, i) => ({ jsonrpc: "2.0", id: i, method: c.method, params: c.params }))),
+        signal: AbortSignal.timeout(8e3)
+      });
+      const body = await res.json();
+      if (!Array.isArray(body)) continue;
+      const out2 = calls.map(() => null);
+      for (const r of body) if (typeof r.id === "number" && r.id < out2.length) out2[r.id] = r.result ?? null;
+      return out2;
+    } catch {
+    }
+  }
+  const out = [];
+  for (const c of calls) out.push(await rpc(c.method, c.params).catch(() => null));
+  return out;
+}
 async function explorer(params, apiKey) {
   const query = new URLSearchParams({ chainid: String(CHAIN_ID), ...params, apikey: apiKey });
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -45,6 +87,17 @@ async function explorer(params, apiKey) {
 
 // server/safe.ts
 var WEI = 10n ** 18n;
+function weiToMon(wei, decimals = 4) {
+  let value;
+  try {
+    value = BigInt(wei ?? "0");
+  } catch {
+    return "0";
+  }
+  const whole = value / WEI;
+  const frac = (value % WEI).toString().padStart(18, "0").slice(0, decimals).replace(/0+$/, "");
+  return frac ? `${whole}.${frac}` : whole.toString();
+}
 
 // node_modules/ethers/lib.esm/_version.js
 var version = "6.17.0";
@@ -83,21 +136,21 @@ function defineProperties(target, values, types) {
 }
 
 // node_modules/ethers/lib.esm/utils/errors.js
-function stringify(value, seen) {
+function stringify(value, seen2) {
   if (value == null) {
     return "null";
   }
-  if (seen == null) {
-    seen = /* @__PURE__ */ new Set();
+  if (seen2 == null) {
+    seen2 = /* @__PURE__ */ new Set();
   }
   if (typeof value === "object") {
-    if (seen.has(value)) {
+    if (seen2.has(value)) {
       return "[Circular]";
     }
-    seen.add(value);
+    seen2.add(value);
   }
   if (Array.isArray(value)) {
-    return "[ " + value.map((v) => stringify(v, seen)).join(", ") + " ]";
+    return "[ " + value.map((v) => stringify(v, seen2)).join(", ") + " ]";
   }
   if (value instanceof Uint8Array) {
     const HEX = "0123456789abcdef";
@@ -109,7 +162,7 @@ function stringify(value, seen) {
     return result;
   }
   if (typeof value === "object" && typeof value.toJSON === "function") {
-    return stringify(value.toJSON(), seen);
+    return stringify(value.toJSON(), seen2);
   }
   switch (typeof value) {
     case "boolean":
@@ -123,7 +176,7 @@ function stringify(value, seen) {
     case "object": {
       const keys = Object.keys(value);
       keys.sort();
-      return "{ " + keys.map((k) => `${stringify(k, seen)}: ${stringify(value[k], seen)}`).join(", ") + " }";
+      return "{ " + keys.map((k) => `${stringify(k, seen2)}: ${stringify(value[k], seen2)}`).join(", ") + " }";
     }
   }
   return `[ COULD NOT SERIALIZE ]`;
@@ -5069,122 +5122,146 @@ async function fetchHistory(apiKey) {
 // server/weighted.ts
 var PROFILE_TTL_MS = 10 * 6e4;
 
-// server/registryFeed.ts
-var toFeed = (e) => ({
-  kind: e.kind,
-  subject: e.subject,
-  reporter: e.reporter,
-  score: e.score,
-  reasonLabel: e.reasonCode === void 0 ? void 0 : REASON_LABELS[e.reasonCode] ?? "Other",
-  time: new Date(e.time * 1e3).toISOString(),
-  txHash: e.txHash
-});
-function activityByDay(events, days = 14, now = Date.now()) {
-  const out = [];
-  const today = new Date(now);
-  today.setUTCHours(0, 0, 0, 0);
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today.getTime() - i * 864e5);
-    out.push({ day: d.toISOString().slice(0, 10), recorded: 0, retracted: 0 });
-  }
-  const byDay = new Map(out.map((r) => [r.day, r]));
-  for (const e of events) {
-    const row = byDay.get(new Date(e.time * 1e3).toISOString().slice(0, 10));
-    if (!row) continue;
-    if (e.kind === "recorded") row.recorded += 1;
-    else row.retracted += 1;
-  }
-  return out;
-}
-function scoreHistogram(scores) {
-  const buckets = Array.from({ length: 10 }, (_, i) => ({ label: i === 9 ? "90-100" : `${i * 10}-${i * 10 + 9}`, count: 0 }));
-  for (const s of scores) buckets[Math.min(9, Math.max(0, Math.floor(s / 10)))].count += 1;
-  return buckets;
-}
-async function registryOverview(apiKey) {
-  const { events, signals, truncated } = await fetchHistory(apiKey);
-  const subjects = /* @__PURE__ */ new Map();
-  const reporters = /* @__PURE__ */ new Set();
-  const reasonCounts = /* @__PURE__ */ new Map();
-  const bands = [
-    { label: "Low (0-39)", count: 0 },
-    { label: "Caution (40-69)", count: 0 },
-    { label: "High (70-100)", count: 0 }
-  ];
-  for (const s of signals) {
-    const k = s.subject.toLowerCase();
-    const row = subjects.get(k) ?? { address: s.subject, scores: [], last: 0 };
-    row.scores.push(s.score);
-    row.last = Math.max(row.last, s.reportedAt);
-    subjects.set(k, row);
-    reporters.add(s.reporter.toLowerCase());
-    bands[s.score < 40 ? 0 : s.score < 70 ? 1 : 2].count += 1;
-    const label = REASON_LABELS[s.reasonCode] ?? "Other";
-    reasonCounts.set(label, (reasonCounts.get(label) ?? 0) + 1);
-  }
-  const topReported = [...subjects.values()].map((r) => ({
-    address: r.address,
-    reporters: r.scores.length,
-    averageScore: Math.round(r.scores.reduce((a, b2) => a + b2, 0) / r.scores.length),
-    last: r.last
-  })).sort((a, b2) => b2.reporters - a.reporters || b2.averageScore - a.averageScore || b2.last - a.last).slice(0, 10).map(({ last, ...rest }) => ({ ...rest, lastReportedAt: new Date(last * 1e3).toISOString() }));
-  return {
-    stats: {
-      liveSignals: signals.length,
-      addressesReported: subjects.size,
-      activeReporters: reporters.size,
-      totalReports: events.filter((e) => e.kind === "recorded").length,
-      retractions: events.filter((e) => e.kind === "retracted").length,
-      averageScore: signals.length ? Math.round(signals.reduce((a, s) => a + s.score, 0) / signals.length) : null
-    },
-    scoreBands: bands,
-    scoreHistogram: scoreHistogram(signals.map((s) => s.score)),
-    activity: activityByDay(events),
-    reasons: [...reasonCounts.entries()].map(([label, count]) => ({ label, count })).sort((a, b2) => b2.count - a.count),
-    topReported,
-    recent: events.slice(-20).reverse().map(toFeed),
-    historyTruncated: truncated
-  };
-}
-async function registryEvents(apiKey, filter) {
-  const { events, truncated } = await fetchHistory(apiKey);
-  const sub = filter.subject?.toLowerCase();
-  const rep = filter.reporter?.toLowerCase();
-  const matching = events.filter((e) => (!sub || e.subject.toLowerCase() === sub) && (!rep || e.reporter.toLowerCase() === rep));
-  return { events: matching.slice(-100).reverse().map(toFeed), total: matching.length, historyTruncated: truncated };
-}
-
 // server/guard.ts
 var iface3 = new Interface(GUARD_ABI);
 
 // server/radar.ts
+var NULL_ADDRESS = "0x0000000000000000000000000000000000000000";
 var LARGE_VALUE_WEI = 100n * 10n ** 18n;
+var MAX_BLOCKS_PER_CALL = 16;
+var MAX_HITS_PER_BLOCK = 8;
+function classifyTx(tx, flagged) {
+  const reasons = [];
+  let level = "medium";
+  const to = tx.to?.toLowerCase() ?? null;
+  if (to) {
+    const f = flagged.get(to);
+    if (f && f.averageScore >= GUARD_POLICY.confirmScore) {
+      reasons.push(`Pays an address with ${f.reporters} live public signal(s), average score ${f.averageScore}`);
+      if (f.averageScore >= GUARD_POLICY.blockScore && f.reporters >= GUARD_POLICY.minReportersToBlock) level = "high";
+    }
+    if (to === NULL_ADDRESS) {
+      reasons.push("Sent to the null address (0x000\u2026000)");
+      level = "high";
+    }
+    if (to === tx.from.toLowerCase()) reasons.push("Sender and receiver are the same address");
+  }
+  let value = 0n;
+  try {
+    value = BigInt(tx.value || "0x0");
+  } catch {
+    value = 0n;
+  }
+  if (value >= LARGE_VALUE_WEI) reasons.push(`Large transfer of ${weiToMon(value, 2)} MON`);
+  return reasons.length ? { level, reasons } : null;
+}
+function summarizeBlock(block, flagged) {
+  const hits2 = [];
+  let deployments = 0;
+  for (const tx of block.transactions) {
+    if (tx.to === null) deployments += 1;
+    const c = classifyTx(tx, flagged);
+    if (c && hits2.length < MAX_HITS_PER_BLOCK) {
+      hits2.push({ hash: tx.hash, from: tx.from, to: tx.to ?? "", valueMON: weiToMon(tx.value, 4), level: c.level, reasons: c.reasons });
+    }
+  }
+  return {
+    n: parseInt(block.number, 16),
+    t: parseInt(block.timestamp, 16),
+    tx: block.transactions.length,
+    gas: parseInt(block.gasUsed, 16),
+    deployments,
+    hits: hits2
+  };
+}
+var seen = /* @__PURE__ */ new Map();
+async function flaggedAddresses(apiKey) {
+  const map = /* @__PURE__ */ new Map();
+  if (!apiKey) return { map, ok: false };
+  try {
+    const { signals } = await fetchHistory(apiKey);
+    const rows = /* @__PURE__ */ new Map();
+    for (const s of signals) rows.set(s.subject.toLowerCase(), [...rows.get(s.subject.toLowerCase()) ?? [], s.score]);
+    for (const [addr, scores] of rows) map.set(addr, { reporters: scores.length, averageScore: Math.round(scores.reduce((a, b2) => a + b2, 0) / scores.length) });
+    return { map, ok: true };
+  } catch {
+    return { map, ok: false };
+  }
+}
+async function radarSince(after, apiKey) {
+  const head = parseInt(await rpc("eth_blockNumber", []), 16);
+  const from = after > 0 && head - after <= MAX_BLOCKS_PER_CALL ? after + 1 : head - 5;
+  const start = Math.max(from, head - MAX_BLOCKS_PER_CALL + 1);
+  const { map, ok } = await flaggedAddresses(apiKey);
+  const wanted = [];
+  for (let n2 = start; n2 <= head; n2++) if (!seen.has(n2)) wanted.push(n2);
+  const raw = await rpcBatch(wanted.map((n2) => ({ method: "eth_getBlockByNumber", params: ["0x" + n2.toString(16), true] })));
+  raw.forEach((b2) => {
+    if (b2) seen.set(parseInt(b2.number, 16), summarizeBlock(b2, map));
+  });
+  if (seen.size > 400) for (const k of [...seen.keys()].sort((a, b2) => a - b2).slice(0, seen.size - 300)) seen.delete(k);
+  const blocks = [];
+  for (let n2 = start; n2 <= head; n2++) {
+    const b2 = seen.get(n2);
+    if (b2) blocks.push(b2);
+  }
+  return {
+    head,
+    blocks,
+    flaggedAddresses: map.size,
+    registryAvailable: ok,
+    upstream: upstreamName()
+  };
+}
 
 // server/handlers.ts
-var ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 function fail(status, error) {
   return { status, body: { error } };
 }
-async function registryFeed(subject, reporter, apiKey) {
-  if (!apiKey) return fail(500, "Server is missing its explorer key (ETHERSCAN_API_KEY).");
+async function radarView(after, apiKey) {
+  const n2 = typeof after === "string" && /^\d{1,12}$/.test(after) ? Number(after) : 0;
   try {
-    const s = typeof subject === "string" && subject ? subject.trim() : void 0;
-    const r = typeof reporter === "string" && reporter ? reporter.trim() : void 0;
-    if (s && !ADDRESS.test(s) || r && !ADDRESS.test(r)) return fail(400, "Enter a valid address: 0x followed by 40 hex characters.");
-    if (s || r) return { status: 200, body: { data: await registryEvents(apiKey, { subject: s, reporter: r }) } };
-    return { status: 200, body: { data: await registryOverview(apiKey) } };
+    return { status: 200, body: { data: await radarSince(n2, apiKey) } };
   } catch (e) {
     return fail(502, e instanceof Error ? e.message : "Unknown server error");
   }
 }
 
-// api-src/registry-feed.ts
+// server/http.ts
+var MAX_BODY = 64 * 1024;
+function clientIp(req) {
+  const fwd = req.headers["x-forwarded-for"];
+  const first = (Array.isArray(fwd) ? fwd[0] : fwd)?.split(",")[0]?.trim();
+  return first || req.socket?.remoteAddress || "unknown";
+}
+
+// server/limit.ts
+var hits = /* @__PURE__ */ new Map();
+function allow(key2, max, windowMs, now = Date.now()) {
+  const recent = (hits.get(key2) ?? []).filter((t) => now - t < windowMs);
+  if (recent.length >= max) {
+    hits.set(key2, recent);
+    return false;
+  }
+  recent.push(now);
+  hits.set(key2, recent);
+  if (hits.size > 5e3) {
+    for (const k of hits.keys()) if (!(hits.get(k) ?? []).some((t) => now - t < windowMs)) hits.delete(k);
+  }
+  return true;
+}
+
+// api-src/radar.ts
 async function handler(req, res) {
-  const params = new URL(req.url ?? "", "http://x").searchParams;
-  const result = await registryFeed(params.get("subject"), params.get("reporter"), process.env.ETHERSCAN_API_KEY);
-  res.statusCode = result.status;
   res.setHeader("content-type", "application/json");
   res.setHeader("cache-control", "no-store");
+  if (!allow(`radar:${clientIp(req)}`, 120, 6e4)) {
+    res.statusCode = 429;
+    return res.end(JSON.stringify({ error: "Radar rate limit: please slow down." }));
+  }
+  const after = new URL(req.url ?? "", "http://x").searchParams.get("after");
+  const result = await radarView(after, process.env.ETHERSCAN_API_KEY);
+  res.statusCode = result.status;
   res.end(JSON.stringify(result.body));
 }
 export {

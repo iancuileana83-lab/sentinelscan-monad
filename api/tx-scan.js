@@ -320,13 +320,13 @@ var KNOWN_LABELS = {
 var CHAIN_ID = 10143;
 var NETWORK = "monad-testnet";
 var EXPLORER_API = "https://api.etherscan.io/v2/api";
-var RPC_URLS = [
-  "https://rpc-testnet.monadinfra.com",
-  "https://rpc.ankr.com/monad_testnet",
-  "https://testnet-rpc.monad.xyz"
-];
+var PUBLIC_RPC_URLS = ["https://rpc-testnet.monadinfra.com", "https://rpc.ankr.com/monad_testnet", "https://testnet-rpc.monad.xyz"];
+function rpcUrls() {
+  const token = process.env.ENVIO_API_TOKEN;
+  return token ? [`https://monad-testnet.rpc.hypersync.xyz/${token}`, ...PUBLIC_RPC_URLS] : PUBLIC_RPC_URLS;
+}
 var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-async function rpc(method, params, urls = RPC_URLS) {
+async function rpc(method, params, urls = rpcUrls()) {
   let lastError = "no RPC answered";
   for (const url of urls) {
     try {
@@ -5461,6 +5461,9 @@ function txView(r) {
 
 // server/guard.ts
 var iface3 = new Interface(GUARD_ABI);
+
+// server/radar.ts
+var LARGE_VALUE_WEI = 100n * 10n ** 18n;
 
 // server/handlers.ts
 var TX_HASH = /^0x[0-9a-fA-F]{64}$/;

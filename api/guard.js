@@ -15,12 +15,12 @@ var KNOWN_LABELS = {
 };
 
 // server/monad.ts
-var RPC_URLS = [
-  "https://rpc-testnet.monadinfra.com",
-  "https://rpc.ankr.com/monad_testnet",
-  "https://testnet-rpc.monad.xyz"
-];
-async function rpc(method, params, urls = RPC_URLS) {
+var PUBLIC_RPC_URLS = ["https://rpc-testnet.monadinfra.com", "https://rpc.ankr.com/monad_testnet", "https://testnet-rpc.monad.xyz"];
+function rpcUrls() {
+  const token = process.env.ENVIO_API_TOKEN;
+  return token ? [`https://monad-testnet.rpc.hypersync.xyz/${token}`, ...PUBLIC_RPC_URLS] : PUBLIC_RPC_URLS;
+}
+async function rpc(method, params, urls = rpcUrls()) {
   let lastError = "no RPC answered";
   for (const url of urls) {
     try {
@@ -3038,7 +3038,7 @@ var ParamType = class _ParamType {
    *  Walks the **ParamType** with %%value%%, calling %%process%%
    *  on each type, destructing the %%value%% recursively.
    */
-  walk(value, process) {
+  walk(value, process2) {
     if (this.isArray()) {
       if (!Array.isArray(value)) {
         throw new Error("invalid array value");
@@ -3047,7 +3047,7 @@ var ParamType = class _ParamType {
         throw new Error("array is wrong length");
       }
       const _this = this;
-      return value.map((v) => _this.arrayChildren.walk(v, process));
+      return value.map((v) => _this.arrayChildren.walk(v, process2));
     }
     if (this.isTuple()) {
       if (!Array.isArray(value)) {
@@ -3057,11 +3057,11 @@ var ParamType = class _ParamType {
         throw new Error("array is wrong length");
       }
       const _this = this;
-      return value.map((v, i) => _this.components[i].walk(v, process));
+      return value.map((v, i) => _this.components[i].walk(v, process2));
     }
-    return process(this.type, value);
+    return process2(this.type, value);
   }
-  #walkAsync(promises, value, process, setValue) {
+  #walkAsync(promises, value, process2, setValue) {
     if (this.isArray()) {
       if (!Array.isArray(value)) {
         throw new Error("invalid array value");
@@ -3072,7 +3072,7 @@ var ParamType = class _ParamType {
       const childType = this.arrayChildren;
       const result2 = value.slice();
       result2.forEach((value2, index) => {
-        childType.#walkAsync(promises, value2, process, (value3) => {
+        childType.#walkAsync(promises, value2, process2, (value3) => {
           result2[index] = value3;
         });
       });
@@ -3102,14 +3102,14 @@ var ParamType = class _ParamType {
         throw new Error("array is wrong length");
       }
       result2.forEach((value2, index) => {
-        components[index].#walkAsync(promises, value2, process, (value3) => {
+        components[index].#walkAsync(promises, value2, process2, (value3) => {
           result2[index] = value3;
         });
       });
       setValue(result2);
       return;
     }
-    const result = process(this.type, value);
+    const result = process2(this.type, value);
     if (result.then) {
       promises.push(async function() {
         setValue(await result);
@@ -3125,10 +3125,10 @@ var ParamType = class _ParamType {
    *  This can be used to resolve ENS names by walking and resolving each
    *  ``"address"`` type.
    */
-  async walkAsync(value, process) {
+  async walkAsync(value, process2) {
     const promises = [];
     const result = [value];
-    this.#walkAsync(promises, value, process, (value2) => {
+    this.#walkAsync(promises, value, process2, (value2) => {
       result[0] = value2;
     });
     if (promises.length) {
@@ -5048,6 +5048,9 @@ async function guardQuote(recipient) {
     explanation: explainDecision(name, Number(averageScore), Number(reporters))
   };
 }
+
+// server/radar.ts
+var LARGE_VALUE_WEI = 100n * 10n ** 18n;
 
 // server/handlers.ts
 var ADDRESS = /^0x[0-9a-fA-F]{40}$/;
