@@ -7,6 +7,8 @@ import ScannerPage from '@/pages/ScannerPage';
 const RegistryPage = lazy(() => import('@/pages/RegistryPage'));
 const AddressPage = lazy(() => import('@/pages/AddressPage'));
 const ReporterPage = lazy(() => import('@/pages/ReporterPage'));
+const AgentsPage = lazy(() => import('@/pages/AgentsPage'));
+const HowItWorksPage = lazy(() => import('@/pages/HowItWorksPage'));
 
 function NotFound() {
   return (
@@ -30,6 +32,8 @@ export default function App() {
           <Route path="registry" element={<RegistryPage />} />
           <Route path="address/:address" element={<AddressPage />} />
           <Route path="reporter/:address" element={<ReporterPage />} />
+          <Route path="agents" element={<AgentsPage />} />
+          <Route path="how-it-works" element={<HowItWorksPage />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

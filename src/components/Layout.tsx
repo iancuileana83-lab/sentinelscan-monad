@@ -7,6 +7,8 @@ import { REGISTRY_ADDRESS, explorerAddressUrl } from '@/lib/registryConfig';
 const NAV: { to: string; label: string; end?: boolean }[] = [
   { to: '/', label: 'Scanner', end: true },
   { to: '/registry', label: 'Registry' },
+  { to: '/agents', label: 'For AI agents' },
+  { to: '/how-it-works', label: 'How it works' },
 ];
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>

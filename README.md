@@ -9,6 +9,17 @@ hackathon, track *Trust, Identity & AI Infrastructure*.
 > **Testnet only.** Everything here runs on Monad Testnet (chain ID 10143). Testnet MON has no
 > real value, and the app never asks for real money.
 
+## The app
+
+| Page | What it is |
+|---|---|
+| **Scanner** `/` | Scan a wallet or transaction; examples to try; no wallet needed |
+| **Registry** `/registry` | Everything recorded in RiskRegistry, rebuilt from its events: stats, most-reported addresses, recent activity |
+| **Address** `/address/0x…` | A shareable page for one address: scan, public signals (plain and reputation-weighted), full history |
+| **Reporter** `/reporter/0x…` | One reporter's weight, how it is built, and everything they recorded or retracted |
+| **For AI agents** `/agents` | The read-only MCP and JSON tools, with a live playground |
+| **How it works** `/how-it-works` | Every scoring rule with its points, the reputation formula with a calculator, and the honest limits |
+
 ## What it does
 
 1. **Scan a wallet or a transaction** on Monad Testnet. You get a 0 to 100 score, the signals
