@@ -34,14 +34,14 @@ function sendJson(res, status, body) {
 
 // server/limit.ts
 var hits = /* @__PURE__ */ new Map();
-function allow(key, max, windowMs, now = Date.now()) {
-  const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+function allow(key2, max, windowMs, now = Date.now()) {
+  const recent = (hits.get(key2) ?? []).filter((t) => now - t < windowMs);
   if (recent.length >= max) {
-    hits.set(key, recent);
+    hits.set(key2, recent);
     return false;
   }
   recent.push(now);
-  hits.set(key, recent);
+  hits.set(key2, recent);
   if (hits.size > 5e3) {
     for (const k of hits.keys()) if (!(hits.get(k) ?? []).some((t) => now - t < windowMs)) hits.delete(k);
   }
@@ -74,13 +74,13 @@ function checkType(value, type, name) {
   throw error;
 }
 function defineProperties(target, values, types) {
-  for (let key in values) {
-    let value = values[key];
-    const type = types ? types[key] : null;
+  for (let key2 in values) {
+    let value = values[key2];
+    const type = types ? types[key2] : null;
     if (type) {
-      checkType(value, type, key);
+      checkType(value, type, key2);
     }
-    Object.defineProperty(target, key, { enumerable: true, value, writable: false });
+    Object.defineProperty(target, key2, { enumerable: true, value, writable: false });
   }
 }
 
@@ -141,12 +141,12 @@ function makeError(message, code, info) {
       if ("message" in info || "code" in info || "name" in info) {
         throw new Error(`value will overwrite populated values: ${stringify(info)}`);
       }
-      for (const key in info) {
-        if (key === "shortMessage") {
+      for (const key2 in info) {
+        if (key2 === "shortMessage") {
           continue;
         }
-        const value = info[key];
-        details.push(key + "=" + stringify(value));
+        const value = info[key2];
+        details.push(key2 + "=" + stringify(value));
       }
     }
     details.push(`code=${code}`);
@@ -1135,10 +1135,10 @@ var _2n = /* @__PURE__ */ BigInt(2);
 var _7n = /* @__PURE__ */ BigInt(7);
 var _256n = /* @__PURE__ */ BigInt(256);
 var _0x71n = /* @__PURE__ */ BigInt(113);
-for (let round = 0, R = _1n, x = 1, y = 0; round < 24; round++) {
+for (let round2 = 0, R = _1n, x = 1, y = 0; round2 < 24; round2++) {
   [x, y] = [y, (2 * x + 3 * y) % 5];
   SHA3_PI.push(2 * (5 * y + x));
-  SHA3_ROTL.push((round + 1) * (round + 2) / 2 % 64);
+  SHA3_ROTL.push((round2 + 1) * (round2 + 2) / 2 % 64);
   let t = _0n;
   for (let j = 0; j < 7; j++) {
     R = (R << _1n ^ (R >> _7n) * _0x71n) % _256n;
@@ -1152,7 +1152,7 @@ var rotlH = (h, l, s) => s > 32 ? rotlBH(h, l, s) : rotlSH(h, l, s);
 var rotlL = (h, l, s) => s > 32 ? rotlBL(h, l, s) : rotlSL(h, l, s);
 function keccakP(s, rounds = 24) {
   const B = new Uint32Array(5 * 2);
-  for (let round = 24 - rounds; round < 24; round++) {
+  for (let round2 = 24 - rounds; round2 < 24; round2++) {
     for (let x = 0; x < 10; x++)
       B[x] = s[x] ^ s[x + 10] ^ s[x + 20] ^ s[x + 30] ^ s[x + 40];
     for (let x = 0; x < 10; x += 2) {
@@ -1185,8 +1185,8 @@ function keccakP(s, rounds = 24) {
       for (let x = 0; x < 10; x++)
         s[y + x] ^= ~B[(x + 2) % 10] & B[(x + 4) % 10];
     }
-    s[0] ^= SHA3_IOTA_H[round];
-    s[1] ^= SHA3_IOTA_L[round];
+    s[0] ^= SHA3_IOTA_H[round2];
+    s[1] ^= SHA3_IOTA_L[round2];
   }
   B.fill(0);
 }
@@ -1378,8 +1378,8 @@ var Base36 = function() {
   ;
   const result = {};
   for (let i = 0; i < 36; i++) {
-    const key = "0123456789abcdefghijklmnopqrstuvwxyz"[i];
-    result[key] = BigInt(i);
+    const key2 = "0123456789abcdefghijklmnopqrstuvwxyz"[i];
+    result[key2] = BigInt(i);
   }
   return result;
 }();
@@ -2782,9 +2782,9 @@ function lex(text) {
 }
 function allowSingle(set, allowed) {
   let included = [];
-  for (const key in allowed.keys()) {
-    if (set.has(key)) {
-      included.push(key);
+  for (const key2 in allowed.keys()) {
+    if (set.has(key2)) {
+      included.push(key2);
     }
   }
   if (included.length > 1) {
@@ -4271,9 +4271,9 @@ var Interface = class _Interface {
     return AbiCoder.defaultAbiCoder();
   }
   // Find a function definition by any means necessary (unless it is ambiguous)
-  #getFunction(key, values, forceUnique) {
-    if (isHexString(key)) {
-      const selector = key.toLowerCase();
+  #getFunction(key2, values, forceUnique) {
+    if (isHexString(key2)) {
+      const selector = key2.toLowerCase();
       for (const fragment of this.#functions.values()) {
         if (selector === fragment.selector) {
           return fragment;
@@ -4281,13 +4281,13 @@ var Interface = class _Interface {
       }
       return null;
     }
-    if (key.indexOf("(") === -1) {
+    if (key2.indexOf("(") === -1) {
       const matching = [];
       for (const [name, fragment] of this.#functions) {
         if (name.split(
           "("
           /* fix:) */
-        )[0] === key) {
+        )[0] === key2) {
           matching.push(fragment);
         }
       }
@@ -4336,11 +4336,11 @@ var Interface = class _Interface {
       }
       if (matching.length > 1 && forceUnique) {
         const matchStr = matching.map((m) => JSON.stringify(m.format())).join(", ");
-        assertArgument(false, `ambiguous function description (i.e. matches ${matchStr})`, "key", key);
+        assertArgument(false, `ambiguous function description (i.e. matches ${matchStr})`, "key", key2);
       }
       return matching[0];
     }
-    const result = this.#functions.get(FunctionFragment.from(key).format());
+    const result = this.#functions.get(FunctionFragment.from(key2).format());
     if (result) {
       return result;
     }
@@ -4350,9 +4350,9 @@ var Interface = class _Interface {
    *  Get the function name for %%key%%, which may be a function selector,
    *  function name or function signature that belongs to the ABI.
    */
-  getFunctionName(key) {
-    const fragment = this.#getFunction(key, null, false);
-    assertArgument(fragment, "no matching function", "key", key);
+  getFunctionName(key2) {
+    const fragment = this.#getFunction(key2, null, false);
+    assertArgument(fragment, "no matching function", "key", key2);
     return fragment.name;
   }
   /**
@@ -4362,8 +4362,8 @@ var Interface = class _Interface {
    *  In the case of a function name, the name may be ambiguous, so
    *  accessing the [[FunctionFragment]] may require refinement.
    */
-  hasFunction(key) {
-    return !!this.#getFunction(key, null, false);
+  hasFunction(key2) {
+    return !!this.#getFunction(key2, null, false);
   }
   /**
    *  Get the [[FunctionFragment]] for %%key%%, which may be a function
@@ -4375,8 +4375,8 @@ var Interface = class _Interface {
    *  If the %%key%% and %%values%% do not refine to a single function in
    *  the ABI, this will throw.
    */
-  getFunction(key, values) {
-    return this.#getFunction(key, values || null, true);
+  getFunction(key2, values) {
+    return this.#getFunction(key2, values || null, true);
   }
   /**
    *  Iterate over all functions, calling %%callback%%, sorted by their name.
@@ -4390,9 +4390,9 @@ var Interface = class _Interface {
     }
   }
   // Find an event definition by any means necessary (unless it is ambiguous)
-  #getEvent(key, values, forceUnique) {
-    if (isHexString(key)) {
-      const eventTopic = key.toLowerCase();
+  #getEvent(key2, values, forceUnique) {
+    if (isHexString(key2)) {
+      const eventTopic = key2.toLowerCase();
       for (const fragment of this.#events.values()) {
         if (eventTopic === fragment.topicHash) {
           return fragment;
@@ -4400,13 +4400,13 @@ var Interface = class _Interface {
       }
       return null;
     }
-    if (key.indexOf("(") === -1) {
+    if (key2.indexOf("(") === -1) {
       const matching = [];
       for (const [name, fragment] of this.#events) {
         if (name.split(
           "("
           /* fix:) */
-        )[0] === key) {
+        )[0] === key2) {
           matching.push(fragment);
         }
       }
@@ -4434,11 +4434,11 @@ var Interface = class _Interface {
       }
       if (matching.length > 1 && forceUnique) {
         const matchStr = matching.map((m) => JSON.stringify(m.format())).join(", ");
-        assertArgument(false, `ambiguous event description (i.e. matches ${matchStr})`, "key", key);
+        assertArgument(false, `ambiguous event description (i.e. matches ${matchStr})`, "key", key2);
       }
       return matching[0];
     }
-    const result = this.#events.get(EventFragment.from(key).format());
+    const result = this.#events.get(EventFragment.from(key2).format());
     if (result) {
       return result;
     }
@@ -4448,9 +4448,9 @@ var Interface = class _Interface {
    *  Get the event name for %%key%%, which may be a topic hash,
    *  event name or event signature that belongs to the ABI.
    */
-  getEventName(key) {
-    const fragment = this.#getEvent(key, null, false);
-    assertArgument(fragment, "no matching event", "key", key);
+  getEventName(key2) {
+    const fragment = this.#getEvent(key2, null, false);
+    assertArgument(fragment, "no matching event", "key", key2);
     return fragment.name;
   }
   /**
@@ -4460,8 +4460,8 @@ var Interface = class _Interface {
    *  In the case of an event name, the name may be ambiguous, so
    *  accessing the [[EventFragment]] may require refinement.
    */
-  hasEvent(key) {
-    return !!this.#getEvent(key, null, false);
+  hasEvent(key2) {
+    return !!this.#getEvent(key2, null, false);
   }
   /**
    *  Get the [[EventFragment]] for %%key%%, which may be a topic hash,
@@ -4473,8 +4473,8 @@ var Interface = class _Interface {
    *  If the %%key%% and %%values%% do not refine to a single event in
    *  the ABI, this will throw.
    */
-  getEvent(key, values) {
-    return this.#getEvent(key, values || null, true);
+  getEvent(key2, values) {
+    return this.#getEvent(key2, values || null, true);
   }
   /**
    *  Iterate over all events, calling %%callback%%, sorted by their name.
@@ -4497,9 +4497,9 @@ var Interface = class _Interface {
    *  If the %%key%% and %%values%% do not refine to a single error in
    *  the ABI, this will throw.
    */
-  getError(key, values) {
-    if (isHexString(key)) {
-      const selector = key.toLowerCase();
+  getError(key2, values) {
+    if (isHexString(key2)) {
+      const selector = key2.toLowerCase();
       if (BuiltinErrors[selector]) {
         return ErrorFragment.from(BuiltinErrors[selector].signature);
       }
@@ -4510,38 +4510,38 @@ var Interface = class _Interface {
       }
       return null;
     }
-    if (key.indexOf("(") === -1) {
+    if (key2.indexOf("(") === -1) {
       const matching = [];
       for (const [name, fragment] of this.#errors) {
         if (name.split(
           "("
           /* fix:) */
-        )[0] === key) {
+        )[0] === key2) {
           matching.push(fragment);
         }
       }
       if (matching.length === 0) {
-        if (key === "Error") {
+        if (key2 === "Error") {
           return ErrorFragment.from("error Error(string)");
         }
-        if (key === "Panic") {
+        if (key2 === "Panic") {
           return ErrorFragment.from("error Panic(uint256)");
         }
         return null;
       } else if (matching.length > 1) {
         const matchStr = matching.map((m) => JSON.stringify(m.format())).join(", ");
-        assertArgument(false, `ambiguous error description (i.e. ${matchStr})`, "name", key);
+        assertArgument(false, `ambiguous error description (i.e. ${matchStr})`, "name", key2);
       }
       return matching[0];
     }
-    key = ErrorFragment.from(key).format();
-    if (key === "Error(string)") {
+    key2 = ErrorFragment.from(key2).format();
+    if (key2 === "Error(string)") {
       return ErrorFragment.from("error Error(string)");
     }
-    if (key === "Panic(uint256)") {
+    if (key2 === "Panic(uint256)") {
       return ErrorFragment.from("error Panic(uint256)");
     }
-    const result = this.#errors.get(key);
+    const result = this.#errors.get(key2);
     if (result) {
       return result;
     }
@@ -5033,7 +5033,9 @@ var REGISTRY_ABI = [
   "function report(address subject, uint8 score, uint8 reasonCode)",
   "function retract(address subject)",
   "function getSummary(address subject) view returns (uint32 reporterCount, uint8 averageScore, uint64 lastReportedAt)",
-  "function getSignal(address subject, address reporter) view returns (uint8 score, uint8 reasonCode, uint64 reportedAt)"
+  "function getSignal(address subject, address reporter) view returns (uint8 score, uint8 reasonCode, uint64 reportedAt)",
+  "event SignalRecorded(address indexed subject, address indexed reporter, uint8 score, uint8 reasonCode, uint32 reporterCount)",
+  "event SignalRetracted(address indexed subject, address indexed reporter, uint32 reporterCount)"
 ];
 
 // server/monad.ts
@@ -5213,6 +5215,149 @@ async function readRegistry(subject, reporter) {
     if (Number(reportedAt) > 0) view.mine = { score: Number(score), reasonCode: Number(reasonCode), reportedAt: Number(reportedAt) };
   }
   return view;
+}
+
+// server/events.ts
+var iface2 = new Interface(REGISTRY_ABI);
+var RECORDED = iface2.getEvent("SignalRecorded").topicHash;
+var RETRACTED = iface2.getEvent("SignalRetracted").topicHash;
+var PAGE = 1e3;
+var key = (subject, reporter) => `${subject.toLowerCase()}:${reporter.toLowerCase()}`;
+function applyEvents(events) {
+  const live = /* @__PURE__ */ new Map();
+  for (const e of [...events].sort((a, b2) => a.order - b2.order)) {
+    const k = key(e.subject, e.reporter);
+    if (e.kind === "retracted") {
+      live.delete(k);
+    } else {
+      live.set(k, { subject: e.subject, reporter: e.reporter, score: e.score ?? 0, reasonCode: e.reasonCode ?? 0, reportedAt: e.time });
+    }
+  }
+  return [...live.values()];
+}
+async function fetchEvents(topic0, kind, apiKey) {
+  const reply = await explorer(
+    { module: "logs", action: "getLogs", address: REGISTRY_ADDRESS, topic0, fromBlock: "0", toBlock: "latest", page: "1", offset: String(PAGE) },
+    apiKey
+  );
+  if (reply.status !== "1" || !Array.isArray(reply.result)) {
+    if (/no records/i.test(String(reply.message)) || /no records/i.test(String(reply.result))) return { events: [], truncated: false };
+    throw new Error("Could not read the registry history.");
+  }
+  const logs = reply.result;
+  const events = logs.map((l) => {
+    const parsed = iface2.parseLog({ topics: l.topics, data: l.data });
+    return {
+      kind,
+      subject: String(parsed.args.subject),
+      reporter: String(parsed.args.reporter),
+      score: kind === "recorded" ? Number(parsed.args.score) : void 0,
+      reasonCode: kind === "recorded" ? Number(parsed.args.reasonCode) : void 0,
+      time: Number(l.timeStamp),
+      order: Number(l.blockNumber) * 1e6 + (Number(l.logIndex) || 0)
+    };
+  });
+  return { events, truncated: logs.length >= PAGE };
+}
+var cache = null;
+var TTL_MS = 2e4;
+async function fetchLiveSignals(apiKey) {
+  if (cache && Date.now() - cache.at < TTL_MS) return cache.value;
+  const recorded = await fetchEvents(RECORDED, "recorded", apiKey);
+  const retracted = await fetchEvents(RETRACTED, "retracted", apiKey);
+  const value = { signals: applyEvents([...recorded.events, ...retracted.events]), truncated: recorded.truncated || retracted.truncated };
+  cache = { at: Date.now(), value };
+  return value;
+}
+
+// server/reputation.ts
+var WEIGHT_FLOOR = 0.1;
+var FULL_AGE_DAYS = 30;
+var FULL_ACTIVITY_TXS = 50;
+var SPAM_FREE_REPORTS = 10;
+var clamp01 = (x) => Math.min(1, Math.max(0, x));
+var round = (x, d = 3) => Math.round(x * 10 ** d) / 10 ** d;
+function reputationWeight(p) {
+  const age = clamp01(p.ageDays / FULL_AGE_DAYS);
+  const activity = clamp01(Math.log10(1 + Math.max(0, p.transactions)) / Math.log10(1 + FULL_ACTIVITY_TXS));
+  const restraint = p.reportsMade <= SPAM_FREE_REPORTS ? 1 : clamp01(SPAM_FREE_REPORTS / p.reportsMade);
+  const earned = (0.5 * age + 0.5 * activity) * Math.max(restraint, 0.2);
+  return { weight: round(WEIGHT_FLOOR + (1 - WEIGHT_FLOOR) * earned), age: round(age), activity: round(activity), restraint: round(restraint) };
+}
+function summarize(signals) {
+  if (signals.length === 0) return { weightedAverage: null, plainAverage: null, effectiveReporters: 0, totalWeight: 0 };
+  const total = signals.reduce((a, s) => a + s.weight, 0);
+  const sumSq = signals.reduce((a, s) => a + s.weight * s.weight, 0);
+  const weighted = signals.reduce((a, s) => a + s.weight * s.score, 0) / total;
+  const plain = signals.reduce((a, s) => a + s.score, 0) / signals.length;
+  return {
+    weightedAverage: Math.round(weighted),
+    plainAverage: Math.round(plain),
+    effectiveReporters: round(total * total / sumSq, 2),
+    totalWeight: round(total, 2)
+  };
+}
+
+// server/weighted.ts
+var MAX_PROFILED = 12;
+var PROFILE_TTL_MS = 10 * 6e4;
+var profiles = /* @__PURE__ */ new Map();
+async function walletHistory(address, apiKey) {
+  const k = address.toLowerCase();
+  const hit = profiles.get(k);
+  if (hit && Date.now() - hit.at < PROFILE_TTL_MS) return hit.value;
+  const reply = await explorer(
+    { module: "account", action: "txlist", address, startblock: "0", endblock: "99999999", sort: "asc", page: "1", offset: "100" },
+    apiKey
+  );
+  let value = { ageDays: 0, transactions: 0 };
+  if (reply.status === "1" && Array.isArray(reply.result) && reply.result.length) {
+    const txs = reply.result;
+    value = { ageDays: Math.max(0, (Date.now() / 1e3 - Number(txs[0].timeStamp)) / 86400), transactions: txs.length };
+  }
+  profiles.set(k, { at: Date.now(), value });
+  return value;
+}
+async function readWeighted(subject, apiKey) {
+  const { signals, truncated } = await fetchLiveSignals(apiKey);
+  const sub = subject.toLowerCase();
+  const forSubject = signals.filter((s) => s.subject.toLowerCase() === sub).sort((a, b2) => b2.reportedAt - a.reportedAt);
+  const reportsMade = /* @__PURE__ */ new Map();
+  for (const s of signals) reportsMade.set(s.reporter.toLowerCase(), (reportsMade.get(s.reporter.toLowerCase()) ?? 0) + 1);
+  const confirmed = [];
+  for (const s of forSubject.slice(0, 25)) {
+    const view = await readRegistry(s.subject, s.reporter);
+    if (view.mine) confirmed.push({ ...s, score: view.mine.score, reasonCode: view.mine.reasonCode, reportedAt: view.mine.reportedAt });
+  }
+  const reporters = [];
+  for (const [i, s] of confirmed.entries()) {
+    const made = reportsMade.get(s.reporter.toLowerCase()) ?? 1;
+    const profiled = i < MAX_PROFILED;
+    const history = profiled ? await walletHistory(s.reporter, apiKey) : { ageDays: 0, transactions: 0 };
+    const profile = { ...history, reportsMade: made };
+    const w = reputationWeight(profile);
+    reporters.push({
+      reporter: s.reporter,
+      score: s.score,
+      reasonCode: s.reasonCode,
+      reasonLabel: REASON_LABELS[s.reasonCode] ?? "Other",
+      reportedAt: new Date(s.reportedAt * 1e3).toISOString(),
+      weight: profiled ? w.weight : WEIGHT_FLOOR,
+      factors: { ...w, ageDays: Math.round(history.ageDays * 10) / 10, transactions: history.transactions, reportsMade: made },
+      profiled
+    });
+  }
+  reporters.sort((a, b2) => b2.weight - a.weight);
+  const sum = summarize(reporters.map((r) => ({ score: r.score, weight: r.weight })));
+  return {
+    weightedAverage: sum.weightedAverage,
+    plainAverage: sum.plainAverage,
+    effectiveReporters: sum.effectiveReporters,
+    weightFloor: WEIGHT_FLOOR,
+    reporters,
+    note: "Weights come from each reporter wallet's public history on Monad Testnet (age, activity, how many addresses they reported). They are a heuristic: patient attackers can age wallets, so this weakens cheap spam but does not prevent it.",
+    historyTruncated: truncated
+  };
 }
 
 // src/lib/txRisk.ts
@@ -5881,7 +6026,7 @@ var TOOLS = [
   },
   {
     name: "get_registry_signals",
-    description: "Read the public RiskRegistry contract on Monad Testnet (0xb0C3Be753788a5962DE52db929f49df02700AFd4): how many distinct reporters have recorded a signal about an address, their average score and the time of the last report. Optionally include one reporter's own signal. Opinions of anonymous wallets, not proof: anyone can use many wallets.",
+    description: "Read the public RiskRegistry contract on Monad Testnet (0xb0C3Be753788a5962DE52db929f49df02700AFd4): how many distinct reporters have recorded a signal about an address, their plain average score and the time of the last report, plus a reputation-weighted average that counts each reporter by their wallet's age, activity and restraint (with the per-reporter breakdown). Optionally include one reporter's own signal. Opinions of anonymous wallets, not proof: anyone can use many wallets, so the weights are a heuristic.",
     inputSchema: {
       type: "object",
       properties: {
@@ -5922,6 +6067,14 @@ async function callTool(name, args, apiKey) {
         return badArgs('"reporter" must be 0x followed by 40 hex characters.');
       }
       const view = await readRegistry(a.address, a.reporter);
+      let weighted;
+      if (apiKey && view.reporterCount > 0) {
+        try {
+          weighted = await readWeighted(a.address, apiKey);
+        } catch {
+          weighted = void 0;
+        }
+      }
       return {
         ok: true,
         data: {
@@ -5931,6 +6084,7 @@ async function callTool(name, args, apiKey) {
           reporterCount: view.reporterCount,
           averageScore: view.reporterCount ? view.averageScore : null,
           lastReportedAt: view.lastReportedAt ? new Date(view.lastReportedAt * 1e3).toISOString() : null,
+          reputationWeighted: weighted,
           reporterSignal: view.mine ? { score: view.mine.score, reasonCode: view.mine.reasonCode, reasonLabel: REASON_LABELS[view.mine.reasonCode] ?? "Other" } : null,
           notice: NOTICE
         }

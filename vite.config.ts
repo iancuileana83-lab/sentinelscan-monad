@@ -20,7 +20,7 @@ function devApi(apiKey: string | undefined): Plugin {
             : url.pathname === '/api/tx-scan'
               ? () => txScan(url.searchParams.get('hash'), apiKey)
               : url.pathname === '/api/registry'
-                ? () => registryView(url.searchParams.get('address'), url.searchParams.get('reporter'))
+                ? () => registryView(url.searchParams.get('address'), url.searchParams.get('reporter'), apiKey)
                 : null;
         if (!run) return next();
         const result = await run();

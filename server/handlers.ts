@@ -1,6 +1,7 @@
 // Shared by the Vercel functions in /api and by the dev server in vite.config.ts.
 import { buildTxReport, buildWalletReport } from './reports.ts';
 import { readRegistry } from './registry.ts';
+import { readWeighted } from './weighted.ts';
 import { txView, walletView } from './views.ts';
 
 export interface HandlerResult {
@@ -30,13 +31,24 @@ export async function walletScan(address: unknown, apiKey: string | undefined): 
   }
 }
 
-export async function registryView(subject: unknown, reporter: unknown): Promise<HandlerResult> {
+export async function registryView(subject: unknown, reporter: unknown, apiKey?: string): Promise<HandlerResult> {
   if (typeof subject !== 'string' || !ADDRESS.test(subject.trim())) {
     return fail(400, 'Enter a valid wallet address: 0x followed by 40 hex characters.');
   }
   const who = typeof reporter === 'string' && ADDRESS.test(reporter.trim()) ? reporter.trim() : undefined;
   try {
-    return { status: 200, body: { data: await readRegistry(subject.trim(), who) } };
+    const data = await readRegistry(subject.trim(), who);
+    // The weighted view needs the explorer key; if it fails, the plain on-chain numbers still show.
+    let weighted;
+    let weightedError: string | undefined;
+    if (apiKey && data.reporterCount > 0) {
+      try {
+        weighted = await readWeighted(subject.trim(), apiKey);
+      } catch (e) {
+        weightedError = e instanceof Error ? e.message : 'Weighted view unavailable.';
+      }
+    }
+    return { status: 200, body: { data, weighted, weightedError } };
   } catch (e) {
     return fail(502, e instanceof Error ? e.message : 'Unknown server error');
   }

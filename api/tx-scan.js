@@ -5403,11 +5403,21 @@ var REGISTRY_ABI = [
   "function report(address subject, uint8 score, uint8 reasonCode)",
   "function retract(address subject)",
   "function getSummary(address subject) view returns (uint32 reporterCount, uint8 averageScore, uint64 lastReportedAt)",
-  "function getSignal(address subject, address reporter) view returns (uint8 score, uint8 reasonCode, uint64 reportedAt)"
+  "function getSignal(address subject, address reporter) view returns (uint8 score, uint8 reasonCode, uint64 reportedAt)",
+  "event SignalRecorded(address indexed subject, address indexed reporter, uint8 score, uint8 reasonCode, uint32 reporterCount)",
+  "event SignalRetracted(address indexed subject, address indexed reporter, uint32 reporterCount)"
 ];
 
 // server/registry.ts
 var iface = new Interface(REGISTRY_ABI);
+
+// server/events.ts
+var iface2 = new Interface(REGISTRY_ABI);
+var RECORDED = iface2.getEvent("SignalRecorded").topicHash;
+var RETRACTED = iface2.getEvent("SignalRetracted").topicHash;
+
+// server/weighted.ts
+var PROFILE_TTL_MS = 10 * 6e4;
 
 // server/views.ts
 function txView(r) {

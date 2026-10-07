@@ -47,7 +47,7 @@ interface ExplorerReply {
 
 // Etherscan's free plan allows only a few calls per second, so calls are made one
 // after another and retried briefly when the limit is hit.
-async function explorer(params: Record<string, string>, apiKey: string): Promise<ExplorerReply> {
+export async function explorer(params: Record<string, string>, apiKey: string): Promise<ExplorerReply> {
   const query = new URLSearchParams({ chainid: String(CHAIN_ID), ...params, apikey: apiKey });
   for (let attempt = 0; attempt < 4; attempt++) {
     const res = await fetch(`${EXPLORER_API}?${query}`, { signal: AbortSignal.timeout(15000) });

@@ -19,10 +19,28 @@ interface Props {
   reasonCode: number;
 }
 
+interface WeightedReporter {
+  reporter: string;
+  score: number;
+  reasonLabel: string;
+  weight: number;
+  factors: { ageDays: number; transactions: number; reportsMade: number };
+}
+
+interface Weighted {
+  weightedAverage: number | null;
+  plainAverage: number | null;
+  effectiveReporters: number;
+  weightFloor: number;
+  reporters: WeightedReporter[];
+  note: string;
+}
+
 type Sent = { hash: string; confirmed: Promise<unknown> };
 
 export default function RegistryPanel({ subject, score, reasonCode }: Props) {
   const [view, setView] = useState<View | null>(null);
+  const [weighted, setWeighted] = useState<Weighted | null>(null);
   const [loadError, setLoadError] = useState('');
   const [account, setAccount] = useState('');
   const [busy, setBusy] = useState('');
@@ -38,6 +56,7 @@ export default function RegistryPanel({ subject, score, reasonCode }: Props) {
       const body = await res.json();
       if (!res.ok) throw new Error(body.error || 'Could not read the registry.');
       setView(body.data);
+      setWeighted(body.weighted ?? null);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : 'Could not read the registry.');
     }
@@ -45,6 +64,7 @@ export default function RegistryPanel({ subject, score, reasonCode }: Props) {
 
   useEffect(() => {
     setView(null);
+    setWeighted(null);
     setNotice(null);
     void load();
   }, [load]);
@@ -114,6 +134,30 @@ export default function RegistryPanel({ subject, score, reasonCode }: Props) {
           value={view ? (view.lastReportedAt ? new Date(view.lastReportedAt * 1000).toLocaleDateString() : '–') : '…'}
         />
       </div>
+      {weighted && weighted.reporters.length > 0 && (
+        <div className="mt-3 rounded-lg bg-slate-800/40 p-3 text-sm text-slate-300">
+          <div>
+            Reputation-weighted score: <b className="text-slate-100">{weighted.weightedAverage}</b>{' '}
+            <span className="text-xs text-slate-500">
+              (plain average {weighted.plainAverage} · effective reporters {weighted.effectiveReporters})
+            </span>
+          </div>
+          <details className="mt-2">
+            <summary className="cursor-pointer text-xs text-slate-400">How each reporter is weighted</summary>
+            <ul className="mt-2 space-y-1 text-xs text-slate-400">
+              {weighted.reporters.map((r) => (
+                <li key={r.reporter}>
+                  <span className="font-mono">{short(r.reporter)}</span>: score {r.score} ({r.reasonLabel}), weight <b>{r.weight}</b>{' '}
+                  · wallet age {r.factors.ageDays} d · {r.factors.transactions} tx · {r.factors.reportsMade} report(s) made
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-slate-500">
+              {weighted.note} Weights run from {weighted.weightFloor} (new, silent wallet) to 1.
+            </p>
+          </details>
+        </div>
+      )}
       {loadError && <p className="mt-3 text-sm text-rose-300">{loadError}</p>}
       {view && view.reporterCount === 0 && <p className="mt-3 text-sm text-slate-400">Nobody has recorded a signal for this address yet.</p>}
 

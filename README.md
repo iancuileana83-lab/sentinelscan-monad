@@ -78,6 +78,22 @@ Safety choices: tool outputs carry a "signal, not verdict" notice; token symbols
 on-chain text are cleaned and shortened because they are untrusted input; unexpected arguments are
 rejected; requests are rate limited per client on a best-effort basis.
 
+## Reputation-weighted signals (off-chain, no contract change)
+
+The contract counts every reporter equally. The app and the agent tool also show a
+**reputation-weighted score**, computed off-chain from public Monad Testnet data, so cheap spam counts for less:
+
+`weight = 0.1 + 0.9 × (0.5 × age + 0.5 × activity) × restraint`
+
+- **age**: days since the reporter's first transaction, full credit at 30 days;
+- **activity**: transactions seen (up to the latest 100), full credit at 50, on a log scale;
+- **restraint**: 1 for up to 10 live signals recorded across all addresses, then falling (never below 0.2 in the formula).
+
+A brand-new, silent wallet still counts, at the floor weight of 0.1. The panel also shows the plain average and the
+"effective reporters" number (how many equal reporters the weights are worth). Each live signal is confirmed against the
+contract itself, and the event history is only used to list reporters. This is a heuristic: patient attackers can age
+wallets, so it weakens cheap spam but cannot prevent it. The formula lives in `server/reputation.ts` and is covered by tests.
+
 ## What's new for Metropolis
 
 SentinelScan started earlier as an Ethereum and Arbitrum scanner,
@@ -104,7 +120,8 @@ is a new, standalone app. What is reused and what is new:
 - A new standalone app and backend. The earlier project depended on Supabase Edge Functions. This
   one uses a few small serverless functions in `api/` that keep the explorer key on the server.
 - **Read-only AI-agent tools**: an MCP server and a JSON API with schemas (`server/tools.ts`, `server/mcp.ts`), plus a demo client (`examples/agent-demo.mjs`).
-- Tests for the scoring, the agent tools and the app's contract address, and this documentation.
+- **Reputation-weighted signals**: off-chain weights from reporter wallet history (`server/reputation.ts`, `server/events.ts`, `server/weighted.ts`), shown in the app and returned to agents.
+- Tests for the scoring, the agent tools, the weighting and the app's contract address, and this documentation.
 
 ## How it works
 

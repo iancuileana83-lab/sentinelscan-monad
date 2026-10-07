@@ -1,6 +1,7 @@
 // The read-only tool set exposed to AI agents, by MCP (/api/mcp) and by plain JSON
 // (/api/agent-tools). Nothing here can sign, send or change anything on-chain.
 import { readRegistry } from './registry.ts';
+import { readWeighted } from './weighted.ts';
 import { buildTxReport, buildWalletReport, NOTICE } from './reports.ts';
 import { REASON_LABELS } from '../src/lib/registryConfig.ts';
 
@@ -44,7 +45,7 @@ export const TOOLS: ToolDefinition[] = [
   {
     name: 'get_registry_signals',
     description:
-      'Read the public RiskRegistry contract on Monad Testnet (0xb0C3Be753788a5962DE52db929f49df02700AFd4): how many distinct reporters have recorded a signal about an address, their average score and the time of the last report. Optionally include one reporter\'s own signal. Opinions of anonymous wallets, not proof: anyone can use many wallets.',
+      'Read the public RiskRegistry contract on Monad Testnet (0xb0C3Be753788a5962DE52db929f49df02700AFd4): how many distinct reporters have recorded a signal about an address, their plain average score and the time of the last report, plus a reputation-weighted average that counts each reporter by their wallet\'s age, activity and restraint (with the per-reporter breakdown). Optionally include one reporter\'s own signal. Opinions of anonymous wallets, not proof: anyone can use many wallets, so the weights are a heuristic.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -91,6 +92,14 @@ export async function callTool(name: string, args: unknown, apiKey: string | und
         return badArgs('"reporter" must be 0x followed by 40 hex characters.');
       }
       const view = await readRegistry(a.address, a.reporter as string | undefined);
+      let weighted;
+      if (apiKey && view.reporterCount > 0) {
+        try {
+          weighted = await readWeighted(a.address, apiKey);
+        } catch {
+          weighted = undefined; // the plain numbers below are still correct
+        }
+      }
       return {
         ok: true,
         data: {
@@ -100,6 +109,7 @@ export async function callTool(name: string, args: unknown, apiKey: string | und
           reporterCount: view.reporterCount,
           averageScore: view.reporterCount ? view.averageScore : null,
           lastReportedAt: view.lastReportedAt ? new Date(view.lastReportedAt * 1000).toISOString() : null,
+          reputationWeighted: weighted,
           reporterSignal: view.mine
             ? { score: view.mine.score, reasonCode: view.mine.reasonCode, reasonLabel: REASON_LABELS[view.mine.reasonCode] ?? 'Other' }
             : null,

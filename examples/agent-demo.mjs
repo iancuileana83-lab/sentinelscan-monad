@@ -43,6 +43,8 @@ for (const s of scan.signals) say(`  signal      : [${s.severity}] ${s.title}`);
 step(3, 'Call get_registry_signals({ address })');
 const registry = await call('get_registry_signals', { address });
 say(`  on-chain reporters: ${registry.reporterCount}${registry.reporterCount ? `, average score ${registry.averageScore}` : ''}`);
+const rw = registry.reputationWeighted;
+if (rw?.reporters?.length) say(`  reputation-weighted score: ${rw.weightedAverage} (plain ${rw.plainAverage}, effective reporters ${rw.effectiveReporters}; weights ${rw.reporters.map((r) => r.weight).join(', ')})`);
 
 step(4, 'Answer, using only the evidence above');
 const top = scan.evidence.topCounterparties[0];
