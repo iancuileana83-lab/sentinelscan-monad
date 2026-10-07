@@ -4,3 +4,7 @@ dist
 .vercel
 cache
 out
+artifacts
+cache
+typechain-types
+coverage
