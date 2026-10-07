@@ -77,19 +77,22 @@ export default function RadarPage() {
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
     const data = body.data as RadarReply;
+    const initial = last.current === 0;
     const fresh = data.blocks.filter((b) => b.n > last.current);
     last.current = data.head;
     setHead(data.head);
     setMeta({ flagged: data.flaggedAddresses, registryOk: data.registryAvailable, upstream: data.upstream });
     if (fresh.length) {
       const now = performance.now();
-      window_.current.push({ at: now, blocks: fresh.length, tx: fresh.reduce((a, b) => a + b.tx, 0) });
-      window_.current = window_.current.filter((w) => now - w.at < 12_000);
-      const span = Math.max(1, (now - window_.current[0].at + POLL_MS) / 1000);
-      setRates({
-        blocksPerSec: window_.current.reduce((a, w) => a + w.blocks, 0) / span,
-        txPerSec: window_.current.reduce((a, w) => a + w.tx, 0) / span,
-      });
+      if (!initial) {
+        window_.current.push({ at: now, blocks: fresh.length, tx: fresh.reduce((a, b) => a + b.tx, 0) });
+        window_.current = window_.current.filter((w) => now - w.at < 12_000);
+        const span = Math.max(1, (now - window_.current[0].at + POLL_MS) / 1000);
+        setRates({
+          blocksPerSec: window_.current.reduce((a, w) => a + w.blocks, 0) / span,
+          txPerSec: window_.current.reduce((a, w) => a + w.tx, 0) / span,
+        });
+      }
       setBlocks((old) => [...[...fresh].sort((a, b) => b.n - a.n), ...old].slice(0, KEEP_BLOCKS));
       const newHits = fresh.flatMap((b) => b.hits.map((h) => ({ ...h, block: b.n }))).reverse();
       if (newHits.length) setHits((old) => [...newHits, ...old].slice(0, KEEP_HITS));
