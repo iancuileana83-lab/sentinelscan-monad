@@ -1,0 +1,37 @@
+import { defineConfig, loadEnv, type Plugin } from 'vite';
+import react from '@vitejs/plugin-react';
+import { fileURLToPath, URL } from 'node:url';
+import { txScan, walletScan } from './server/handlers.ts';
+
+// In development the same handlers that Vercel runs in production are served here,
+// so the Etherscan key stays on the server side of the dev machine too.
+function devApi(apiKey: string | undefined): Plugin {
+  return {
+    name: 'sentinelscan-dev-api',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const url = new URL(req.url ?? '', 'http://localhost');
+        const run =
+          url.pathname === '/api/wallet-scan'
+            ? () => walletScan(url.searchParams.get('address'), apiKey)
+            : url.pathname === '/api/tx-scan'
+              ? () => txScan(url.searchParams.get('hash'), apiKey)
+              : null;
+        if (!run) return next();
+        const result = await run();
+        res.statusCode = result.status;
+        res.setHeader('content-type', 'application/json');
+        res.end(JSON.stringify(result.body));
+      });
+    },
+  };
+}
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  return {
+    plugins: [react(), devApi(env.ETHERSCAN_API_KEY)],
+    resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+    optimizeDeps: { exclude: ['lucide-react'] },
+  };
+});
