@@ -18,11 +18,8 @@ var KNOWN_LABELS = {
 var CHAIN_ID = 10143;
 var EXPLORER_API = "https://api.etherscan.io/v2/api";
 var PUBLIC_RPC_URLS = ["https://rpc-testnet.monadinfra.com", "https://rpc.ankr.com/monad_testnet", "https://testnet-rpc.monad.xyz"];
-function rpcUrls() {
-  const token = process.env.ENVIO_API_TOKEN;
-  return token ? [`https://monad-testnet.rpc.hypersync.xyz/${token}`, ...PUBLIC_RPC_URLS] : PUBLIC_RPC_URLS;
-}
-var upstreamName = () => process.env.ENVIO_API_TOKEN ? "Envio HyperRPC" : "public Monad RPC";
+var rpcUrls = () => PUBLIC_RPC_URLS;
+var upstreamName = () => "public Monad RPC";
 var sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function rpc(method, params, urls = rpcUrls()) {
   let lastError = "no RPC answered";
@@ -5064,6 +5061,100 @@ var GUARD_ABI = [
 // server/registry.ts
 var iface = new Interface(REGISTRY_ABI);
 
+// server/hypersync.ts
+var URL_QUERY = "https://monad-testnet.hypersync.xyz/query";
+var MAX_PAGES = 20;
+var num = (v) => {
+  if (typeof v === "number") return v;
+  if (typeof v === "string") return v.startsWith("0x") ? parseInt(v, 16) : Number(v);
+  return 0;
+};
+function readPage(page) {
+  const logs = [];
+  const timestamps = /* @__PURE__ */ new Map();
+  for (const chunk of page.data ?? []) {
+    for (const b2 of chunk.blocks ?? []) timestamps.set(num(b2.number), num(b2.timestamp));
+    for (const l of chunk.logs ?? []) {
+      const topics = (l.topics ?? [l.topic0, l.topic1, l.topic2, l.topic3]).filter((t) => typeof t === "string" && t.length > 2);
+      logs.push({
+        topics,
+        data: l.data ?? "0x",
+        block: num(l.block_number ?? l.blockNumber),
+        logIndex: num(l.log_index ?? l.logIndex),
+        txHash: l.transaction_hash ?? l.transactionHash ?? ""
+      });
+    }
+  }
+  return { logs, timestamps };
+}
+async function hypersyncLogs(topic0s, token) {
+  const logs = [];
+  const timestamps = /* @__PURE__ */ new Map();
+  let from = 0;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const res = await fetch(URL_QUERY, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        from_block: from,
+        logs: [{ address: [REGISTRY_ADDRESS], topics: [topic0s] }],
+        field_selection: {
+          block: ["number", "timestamp"],
+          log: ["address", "data", "topic0", "topic1", "topic2", "topic3", "block_number", "transaction_hash", "log_index"]
+        }
+      }),
+      signal: AbortSignal.timeout(15e3)
+    });
+    if (!res.ok) throw new Error(`HyperSync returned ${res.status}`);
+    const body = await res.json();
+    const got = readPage(body);
+    logs.push(...got.logs);
+    got.timestamps.forEach((t, n2) => timestamps.set(n2, t));
+    const next = body.next_block ?? 0;
+    if (!next || next <= from || body.archive_height !== void 0 && next > body.archive_height) break;
+    from = next;
+  }
+  return { logs, timestamps };
+}
+async function hypersyncHeight(token) {
+  const res = await fetch("https://monad-testnet.hypersync.xyz/height", { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(8e3) });
+  if (!res.ok) throw new Error(`HyperSync returned ${res.status}`);
+  return Number((await res.json()).height ?? 0);
+}
+async function hypersyncBlocks(from, to, token) {
+  const blocks = /* @__PURE__ */ new Map();
+  let cursor = from;
+  for (let page = 0; page < 4 && cursor <= to; page++) {
+    const res = await fetch(URL_QUERY, {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        from_block: cursor,
+        to_block: to + 1,
+        transactions: [{}],
+        field_selection: { block: ["number", "timestamp", "gas_used"], transaction: ["hash", "from", "to", "value", "block_number"] }
+      }),
+      signal: AbortSignal.timeout(1e4)
+    });
+    if (!res.ok) throw new Error(`HyperSync returned ${res.status}`);
+    const body = await res.json();
+    for (const chunk of body.data ?? []) {
+      for (const b2 of chunk.blocks ?? []) {
+        const n2 = num(b2.number);
+        if (!blocks.has(n2)) blocks.set(n2, { number: "0x" + n2.toString(16), timestamp: "0x" + num(b2.timestamp).toString(16), gasUsed: "0x" + num(b2.gas_used).toString(16), transactions: [] });
+      }
+      for (const t of chunk.transactions ?? []) {
+        const blk = blocks.get(num(t.block_number));
+        if (blk && t.hash && t.from) blk.transactions.push({ hash: t.hash, from: t.from, to: t.to ?? null, value: t.value ?? "0x0" });
+      }
+    }
+    const next = body.next_block ?? 0;
+    if (!next || next <= cursor) break;
+    cursor = next;
+  }
+  return [...blocks.values()].sort((a, b2) => parseInt(a.number, 16) - parseInt(b2.number, 16));
+}
+
 // server/events.ts
 var iface2 = new Interface(REGISTRY_ABI);
 var RECORDED = iface2.getEvent("SignalRecorded").topicHash;
@@ -5109,12 +5200,46 @@ async function fetchEvents(topic0, kind, apiKey) {
 }
 var cache = null;
 var TTL_MS = 2e4;
+function eventFromLog(log, timestamps) {
+  const topic0 = log.topics[0];
+  const kind = topic0 === RECORDED ? "recorded" : topic0 === RETRACTED ? "retracted" : null;
+  if (!kind) return null;
+  const parsed = iface2.parseLog({ topics: log.topics, data: log.data });
+  if (!parsed) return null;
+  return {
+    kind,
+    subject: String(parsed.args.subject),
+    reporter: String(parsed.args.reporter),
+    score: kind === "recorded" ? Number(parsed.args.score) : void 0,
+    reasonCode: kind === "recorded" ? Number(parsed.args.reasonCode) : void 0,
+    time: timestamps.get(log.block) ?? 0,
+    order: log.block * 1e6 + log.logIndex,
+    txHash: log.txHash
+  };
+}
 async function fetchHistory(apiKey) {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.value;
-  const recorded = await fetchEvents(RECORDED, "recorded", apiKey);
-  const retracted = await fetchEvents(RETRACTED, "retracted", apiKey);
-  const events = [...recorded.events, ...retracted.events].sort((a, b2) => a.order - b2.order);
-  const value = { events, signals: applyEvents(events), truncated: recorded.truncated || retracted.truncated };
+  let events = null;
+  let truncated = false;
+  let source = "Etherscan API";
+  const token = process.env.ENVIO_API_TOKEN;
+  if (token) {
+    try {
+      const { logs, timestamps } = await hypersyncLogs([RECORDED, RETRACTED], token);
+      events = logs.map((l) => eventFromLog(l, timestamps)).filter((e) => e !== null && e.time > 0);
+      source = "Envio HyperSync";
+    } catch {
+      events = null;
+    }
+  }
+  if (!events) {
+    const recorded = await fetchEvents(RECORDED, "recorded", apiKey);
+    const retracted = await fetchEvents(RETRACTED, "retracted", apiKey);
+    events = [...recorded.events, ...retracted.events];
+    truncated = recorded.truncated || retracted.truncated;
+  }
+  events.sort((a, b2) => a.order - b2.order);
+  const value = { events, signals: applyEvents(events), truncated, source };
   cache = { at: Date.now(), value };
   return value;
 }
@@ -5189,13 +5314,37 @@ async function flaggedAddresses(apiKey) {
   }
 }
 async function radarSince(after, apiKey) {
-  const head = parseInt(await rpc("eth_blockNumber", []), 16);
+  const token = process.env.ENVIO_API_TOKEN;
+  let head = 0;
+  let upstream = upstreamName();
+  let viaHypersync = false;
+  if (token) {
+    try {
+      head = await hypersyncHeight(token);
+      viaHypersync = head > 0;
+      if (viaHypersync) upstream = "Envio HyperSync";
+    } catch {
+      viaHypersync = false;
+    }
+  }
+  if (!viaHypersync) head = parseInt(await rpc("eth_blockNumber", []), 16);
   const from = after > 0 && head - after <= MAX_BLOCKS_PER_CALL ? after + 1 : head - 5;
   const start = Math.max(from, head - MAX_BLOCKS_PER_CALL + 1);
   const { map, ok } = await flaggedAddresses(apiKey);
   const wanted = [];
   for (let n2 = start; n2 <= head; n2++) if (!seen.has(n2)) wanted.push(n2);
-  const raw = await rpcBatch(wanted.map((n2) => ({ method: "eth_getBlockByNumber", params: ["0x" + n2.toString(16), true] })));
+  let raw = [];
+  if (wanted.length && viaHypersync && token) {
+    try {
+      raw = await hypersyncBlocks(wanted[0], wanted[wanted.length - 1], token);
+    } catch {
+      viaHypersync = false;
+      upstream = upstreamName();
+    }
+  }
+  if (wanted.length && !viaHypersync) {
+    raw = await rpcBatch(wanted.map((n2) => ({ method: "eth_getBlockByNumber", params: ["0x" + n2.toString(16), true] })));
+  }
   raw.forEach((b2) => {
     if (b2) seen.set(parseInt(b2.number, 16), summarizeBlock(b2, map));
   });
@@ -5210,7 +5359,7 @@ async function radarSince(after, apiKey) {
     blocks,
     flaggedAddresses: map.size,
     registryAvailable: ok,
-    upstream: upstreamName()
+    upstream
   };
 }
 

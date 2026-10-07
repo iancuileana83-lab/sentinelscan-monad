@@ -127,3 +127,36 @@ test('score histogram puts 100 in the last bucket and every score in exactly one
   assert.equal(h[9].count, 2);
   assert.equal(h.reduce((a, b) => a + b.count, 0), 6);
 });
+
+import { eventFromLog } from '../server/events.ts';
+import { readPage } from '../server/hypersync.ts';
+import { Interface } from 'ethers';
+import { REGISTRY_ABI } from '../src/lib/registryAbi.ts';
+
+test('HyperSync logs decode to the same events as the explorer path, in either field style', () => {
+  const iface = new Interface(REGISTRY_ABI);
+  const subject = '0x' + '5'.repeat(40);
+  const reporter = '0x' + 'a'.repeat(40);
+  const enc = iface.encodeEventLog(iface.getEvent('SignalRecorded')!, [subject, reporter, 77, 3, 1]);
+  const topic0 = enc.topics[0];
+  const stamps = new Map([[100, 1_700_000_000]]);
+
+  const snake = readPage({
+    data: [{ blocks: [{ number: 100, timestamp: '0x6553f100' }], logs: [{ topic0: enc.topics[0], topic1: enc.topics[1], topic2: enc.topics[2], topic3: null, data: enc.data, block_number: 100, log_index: 2, transaction_hash: '0xabc' }] }],
+  });
+  const camel = readPage({ data: [{ logs: [{ topics: enc.topics, data: enc.data, blockNumber: '0x64', logIndex: '0x2', transactionHash: '0xabc' }] }] });
+  for (const page of [snake, camel]) {
+    assert.equal(page.logs.length, 1);
+    const ev = eventFromLog(page.logs[0], stamps)!;
+    assert.equal(ev.kind, 'recorded');
+    assert.equal(ev.score, 77);
+    assert.equal(ev.reasonCode, 3);
+    assert.equal(ev.subject.toLowerCase(), subject);
+    assert.equal(ev.time, 1_700_000_000);
+    assert.equal(ev.order, 100_000_002);
+    assert.equal(ev.txHash, '0xabc');
+  }
+  assert.equal(snake.timestamps.get(100), 0x6553f100);
+  assert.equal(eventFromLog({ topics: ['0x' + '1'.repeat(64)], data: '0x', block: 1, logIndex: 0, txHash: '' }, stamps), null);
+  assert.ok(topic0.startsWith('0x'));
+});

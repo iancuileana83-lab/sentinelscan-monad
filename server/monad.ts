@@ -10,13 +10,9 @@ const EXPLORER_API = 'https://api.etherscan.io/v2/api';
 // The first two answer fast; the main public RPC sometimes stalls on some calls.
 const PUBLIC_RPC_URLS = ['https://rpc-testnet.monadinfra.com', 'https://rpc.ankr.com/monad_testnet', 'https://testnet-rpc.monad.xyz'];
 
-/** Envio HyperRPC goes first when a free Envio token is configured; the public endpoints remain the fallback. */
-function rpcUrls(): string[] {
-  const token = process.env.ENVIO_API_TOKEN;
-  return token ? [`https://monad-testnet.rpc.hypersync.xyz/${token}`, ...PUBLIC_RPC_URLS] : PUBLIC_RPC_URLS;
-}
+const rpcUrls = (): string[] => PUBLIC_RPC_URLS;
 
-export const upstreamName = () => (process.env.ENVIO_API_TOKEN ? 'Envio HyperRPC' : 'public Monad RPC');
+export const upstreamName = () => 'public Monad RPC';
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -47,7 +43,7 @@ export async function rpc<T = unknown>(method: string, params: unknown[], urls =
 export async function rpcBatch<T = unknown>(calls: { method: string; params: unknown[] }[]): Promise<(T | null)[]> {
   if (calls.length === 0) return [];
   const urls = rpcUrls();
-  // Ankr and HyperRPC answer batches; the foundation endpoint does not.
+  // Ankr answers batches; the foundation endpoint does not.
   const ordered = [...urls.filter((u) => !u.includes('monadinfra')), ...urls.filter((u) => u.includes('monadinfra'))];
   for (const url of ordered) {
     try {

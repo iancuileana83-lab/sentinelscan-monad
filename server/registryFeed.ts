@@ -39,6 +39,7 @@ export interface RegistryOverview {
   topReported: { address: string; reporters: number; averageScore: number; lastReportedAt: string }[];
   recent: FeedEvent[];
   historyTruncated: boolean;
+  dataSource: string;
 }
 
 /** Events per UTC day for the last `days` days, oldest first, zeros included. */
@@ -68,7 +69,7 @@ export function scoreHistogram(scores: number[]): { label: string; count: number
 }
 
 export async function registryOverview(apiKey: string): Promise<RegistryOverview> {
-  const { events, signals, truncated } = await fetchHistory(apiKey);
+  const { events, signals, truncated, source } = await fetchHistory(apiKey);
 
   const subjects = new Map<string, { address: string; scores: number[]; last: number }>();
   const reporters = new Set<string>();
@@ -117,6 +118,7 @@ export async function registryOverview(apiKey: string): Promise<RegistryOverview
     topReported,
     recent: events.slice(-20).reverse().map(toFeed),
     historyTruncated: truncated,
+    dataSource: source,
   };
 }
 

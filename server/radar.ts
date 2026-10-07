@@ -3,6 +3,7 @@
 // These are hints for a quick look, never verdicts.
 import { GUARD_POLICY } from '../src/lib/registryConfig.ts';
 import { fetchHistory } from './events.ts';
+import { hypersyncBlocks, hypersyncHeight } from './hypersync.ts';
 import { rpc, rpcBatch, upstreamName } from './monad.ts';
 import { weiToMon } from './safe.ts';
 
@@ -114,14 +115,38 @@ async function flaggedAddresses(apiKey: string | undefined): Promise<{ map: Map<
 }
 
 export async function radarSince(after: number, apiKey: string | undefined) {
-  const head = parseInt(await rpc<string>('eth_blockNumber', []), 16);
+  const token = process.env.ENVIO_API_TOKEN;
+  let head = 0;
+  let upstream = upstreamName();
+  let viaHypersync = false;
+  if (token) {
+    try {
+      head = await hypersyncHeight(token);
+      viaHypersync = head > 0;
+      if (viaHypersync) upstream = 'Envio HyperSync';
+    } catch {
+      viaHypersync = false;
+    }
+  }
+  if (!viaHypersync) head = parseInt(await rpc<string>('eth_blockNumber', []), 16);
   const from = after > 0 && head - after <= MAX_BLOCKS_PER_CALL ? after + 1 : head - 5;
   const start = Math.max(from, head - MAX_BLOCKS_PER_CALL + 1);
   const { map, ok } = await flaggedAddresses(apiKey);
 
   const wanted: number[] = [];
   for (let n = start; n <= head; n++) if (!seen.has(n)) wanted.push(n);
-  const raw = await rpcBatch<RawBlock>(wanted.map((n) => ({ method: 'eth_getBlockByNumber', params: ['0x' + n.toString(16), true] })));
+  let raw: (RawBlock | null)[] = [];
+  if (wanted.length && viaHypersync && token) {
+    try {
+      raw = await hypersyncBlocks(wanted[0], wanted[wanted.length - 1], token);
+    } catch {
+      viaHypersync = false;
+      upstream = upstreamName();
+    }
+  }
+  if (wanted.length && !viaHypersync) {
+    raw = await rpcBatch<RawBlock>(wanted.map((n) => ({ method: 'eth_getBlockByNumber', params: ['0x' + n.toString(16), true] })));
+  }
   raw.forEach((b) => {
     if (b) seen.set(parseInt(b.number, 16), summarizeBlock(b, map));
   });
@@ -137,6 +162,6 @@ export async function radarSince(after: number, apiKey: string | undefined) {
     blocks,
     flaggedAddresses: map.size,
     registryAvailable: ok,
-    upstream: upstreamName(),
+    upstream,
   };
 }

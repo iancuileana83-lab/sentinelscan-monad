@@ -5,6 +5,7 @@ import { Interface } from 'ethers';
 import { REGISTRY_ADDRESS } from '../src/lib/registryConfig.ts';
 import { REGISTRY_ABI } from '../src/lib/registryAbi.ts';
 import { explorer } from './monad.ts';
+import { hypersyncLogs, type DecodedLog } from './hypersync.ts';
 
 const iface = new Interface(REGISTRY_ABI);
 const RECORDED = iface.getEvent('SignalRecorded')!.topicHash;
@@ -79,15 +80,52 @@ export interface RegistryHistory {
   events: RawEvent[]; // every record and retract, oldest first
   signals: LiveSignal[]; // who currently has a live signal about whom
   truncated: boolean;
+  source: 'Envio HyperSync' | 'Etherscan API';
 }
 
-/** The full registry history. Cached briefly because the explorer is rate limited. */
+/** Turns one HyperSync log into the same event shape the explorer path produces. */
+export function eventFromLog(log: DecodedLog, timestamps: Map<number, number>): RawEvent | null {
+  const topic0 = log.topics[0];
+  const kind = topic0 === RECORDED ? 'recorded' : topic0 === RETRACTED ? 'retracted' : null;
+  if (!kind) return null;
+  const parsed = iface.parseLog({ topics: log.topics, data: log.data });
+  if (!parsed) return null;
+  return {
+    kind,
+    subject: String(parsed.args.subject),
+    reporter: String(parsed.args.reporter),
+    score: kind === 'recorded' ? Number(parsed.args.score) : undefined,
+    reasonCode: kind === 'recorded' ? Number(parsed.args.reasonCode) : undefined,
+    time: timestamps.get(log.block) ?? 0,
+    order: log.block * 1_000_000 + log.logIndex,
+    txHash: log.txHash,
+  };
+}
+
+/** The full registry history. Cached briefly. Envio HyperSync when a token is set, the explorer API otherwise or on failure. */
 export async function fetchHistory(apiKey: string): Promise<RegistryHistory> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.value;
-  const recorded = await fetchEvents(RECORDED, 'recorded', apiKey);
-  const retracted = await fetchEvents(RETRACTED, 'retracted', apiKey);
-  const events = [...recorded.events, ...retracted.events].sort((a, b) => a.order - b.order);
-  const value = { events, signals: applyEvents(events), truncated: recorded.truncated || retracted.truncated };
+  let events: RawEvent[] | null = null;
+  let truncated = false;
+  let source: RegistryHistory['source'] = 'Etherscan API';
+  const token = process.env.ENVIO_API_TOKEN;
+  if (token) {
+    try {
+      const { logs, timestamps } = await hypersyncLogs([RECORDED, RETRACTED], token);
+      events = logs.map((l) => eventFromLog(l, timestamps)).filter((e): e is RawEvent => e !== null && e.time > 0);
+      source = 'Envio HyperSync';
+    } catch {
+      events = null; // fall back to the explorer below
+    }
+  }
+  if (!events) {
+    const recorded = await fetchEvents(RECORDED, 'recorded', apiKey);
+    const retracted = await fetchEvents(RETRACTED, 'retracted', apiKey);
+    events = [...recorded.events, ...retracted.events];
+    truncated = recorded.truncated || retracted.truncated;
+  }
+  events.sort((a, b) => a.order - b.order);
+  const value: RegistryHistory = { events, signals: applyEvents(events), truncated, source };
   cache = { at: Date.now(), value };
   return value;
 }

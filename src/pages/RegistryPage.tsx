@@ -27,6 +27,7 @@ interface Overview {
   topReported: { address: string; reporters: number; averageScore: number; lastReportedAt: string }[];
   recent: FeedEvent[];
   historyTruncated: boolean;
+  dataSource?: string;
 }
 
 export function EventRow({ e, show = 'both' }: { e: FeedEvent; show?: 'both' | 'subject' | 'reporter' }) {
@@ -93,6 +94,7 @@ export default function RegistryPage() {
           <p className="-mt-2 text-xs text-faint">
             {o.stats.totalReports} report(s) recorded in total, {o.stats.retractions} retracted.
             {o.historyTruncated && ' Showing the first 1000 events only.'}
+            {o.dataSource && ` Event history read through ${o.dataSource}.`}
           </p>
 
           {o.stats.liveSignals === 0 ? (
