@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Wallet } from 'lucide-react';
 import RiskGauge from '@/components/RiskGauge';
 import RiskExplainer from '@/components/RiskExplainer';
+import AnalystCard from '@/components/AnalystCard';
 import RegistryPanel from '@/components/RegistryPanel';
 import type { ScanSignal, ScanView } from '@/lib/viewTypes';
 
@@ -61,6 +62,8 @@ export default function ScanResult({ view, warning, linkToAddress = true, showRe
       </div>
 
       {view.kind === 'wallet' && showRegistry && <RegistryPanel subject={view.target} score={view.score} reasonCode={view.reasonCode ?? 0} />}
+
+      {view.kind === 'wallet' && <AnalystCard address={view.target} />}
 
       <RiskExplainer explanation={view.explanation} type={view.kind} />
     </section>

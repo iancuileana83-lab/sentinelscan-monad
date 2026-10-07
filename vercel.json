@@ -1,4 +1,19 @@
 {
-  "functions": { "api/*.js": { "maxDuration": 30 } },
-  "rewrites": [{ "source": "/((?!api/|assets/)[^.]*)", "destination": "/index.html" }]
+  "functions": {
+    "api/agent-demo.js": {
+      "maxDuration": 60
+    },
+    "api/analyst.js": {
+      "maxDuration": 60
+    },
+    "api/*.js": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/((?!api/|assets/)[^.]*)",
+      "destination": "/index.html"
+    }
+  ]
 }

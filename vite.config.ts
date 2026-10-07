@@ -3,10 +3,12 @@ import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 import { guardView, registryFeed, registryView, reporterView, txScan, walletScan, type HandlerResult } from './server/handlers.ts';
 import { mcpRoute, toolsRoute } from './server/agentApi.ts';
+import { agentDemoRoute, aiStatusRoute, analystRoute } from './server/aiRoutes.ts';
 
 // In development the same handlers that Vercel runs in production are served here,
 // so the Etherscan key stays on the server side of the dev machine too.
-function devApi(apiKey: string | undefined): Plugin {
+function devApi(env: Record<string, string | undefined>): Plugin {
+  const apiKey = env.ETHERSCAN_API_KEY;
   const q = (u: URL, k: string) => u.searchParams.get(k);
   const routes: Record<string, (u: URL) => Promise<HandlerResult>> = {
     '/api/wallet-scan': (u) => walletScan(q(u, 'address'), apiKey),
@@ -23,6 +25,9 @@ function devApi(apiKey: string | undefined): Plugin {
         const url = new URL(req.url ?? '', 'http://localhost');
         if (url.pathname === '/api/mcp') return void (await mcpRoute(req, res, apiKey));
         if (url.pathname === '/api/agent-tools') return void (await toolsRoute(req, res, apiKey));
+        if (url.pathname === '/api/ai-status') return void (await aiStatusRoute(req, res, env));
+        if (url.pathname === '/api/agent-demo') return void (await agentDemoRoute(req, res, env));
+        if (url.pathname === '/api/analyst') return void (await analystRoute(req, res, env));
         const run = routes[url.pathname];
         if (!run) return next();
         const result = await run(url);
@@ -37,7 +42,7 @@ function devApi(apiKey: string | undefined): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
-    plugins: [react(), devApi(env.ETHERSCAN_API_KEY)],
+    plugins: [react(), devApi(env)],
     resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
     optimizeDeps: { exclude: ['lucide-react'] },
   };

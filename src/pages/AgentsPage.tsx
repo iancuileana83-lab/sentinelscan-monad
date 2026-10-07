@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, Copy, Loader2, Play, Plug, ShieldCheck } from 'lucide-react';
+import AgentDemo from '@/components/AgentDemo';
 import { Card, ErrorNote } from '@/components/Card';
 import { REGISTRY_ADDRESS } from '@/lib/registryConfig';
 
@@ -193,6 +194,8 @@ export default function AgentsPage() {
           </p>
         </div>
       </Card>
+
+      <AgentDemo />
 
       <Card title="Try the MCP tools" icon={Play}>
         {error && <ErrorNote message={error} />}
