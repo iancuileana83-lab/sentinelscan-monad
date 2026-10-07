@@ -7,3 +7,13 @@ export const REGISTRY_ABI = [
   'event SignalRecorded(address indexed subject, address indexed reporter, uint8 score, uint8 reasonCode, uint32 reporterCount)',
   'event SignalRetracted(address indexed subject, address indexed reporter, uint32 reporterCount)',
 ] as const;
+
+export const GUARD_ABI = [
+  'function pay(address recipient, bool acknowledgeRisk) payable',
+  'function quote(address recipient) view returns (uint8 decision, uint8 averageScore, uint32 reporters)',
+  'error Blocked(uint8 averageScore, uint32 reporters)',
+  'error ConfirmationRequired(uint8 averageScore, uint32 reporters)',
+  'error InvalidRecipient()',
+  'error NoValue()',
+  'error TransferFailed()',
+] as const;

@@ -303,6 +303,19 @@ function levelRiskWord(level) {
   return "a high-risk";
 }
 
+// src/lib/registryConfig.ts
+var REGISTRY_ADDRESS = "0xb0C3Be753788a5962DE52db929f49df02700AFd4";
+var GUARD_ADDRESS = "0x6e124EB8B980ae3e1CB79f856b8dC0d6F691d5bD";
+var DEMO_TARGET = "0x3dc0Cc8bc1BbED963Fc2841b9a975Ab933A94F42";
+var KNOWN_LABELS = {
+  [REGISTRY_ADDRESS.toLowerCase()]: "RiskRegistry contract",
+  [GUARD_ADDRESS.toLowerCase()]: "GuardedPay contract",
+  [DEMO_TARGET.toLowerCase()]: "Demo address (made for this demo)",
+  "0x0228ba8c75b9eaf02fa06872028da9754b2c8874": "Demo test reporter",
+  "0x0c6b75389a0d48f2eb16cc91022728fb6cbe7fc5": "Project test wallet",
+  "0x6f49a8f621353f12378d0046e7d7e4b9b249dc9e": "System account (staking rewards)"
+};
+
 // server/monad.ts
 var CHAIN_ID = 10143;
 var NETWORK = "monad-testnet";
@@ -5407,6 +5420,15 @@ var REGISTRY_ABI = [
   "event SignalRecorded(address indexed subject, address indexed reporter, uint8 score, uint8 reasonCode, uint32 reporterCount)",
   "event SignalRetracted(address indexed subject, address indexed reporter, uint32 reporterCount)"
 ];
+var GUARD_ABI = [
+  "function pay(address recipient, bool acknowledgeRisk) payable",
+  "function quote(address recipient) view returns (uint8 decision, uint8 averageScore, uint32 reporters)",
+  "error Blocked(uint8 averageScore, uint32 reporters)",
+  "error ConfirmationRequired(uint8 averageScore, uint32 reporters)",
+  "error InvalidRecipient()",
+  "error NoValue()",
+  "error TransferFailed()"
+];
 
 // server/registry.ts
 var iface = new Interface(REGISTRY_ABI);
@@ -5436,6 +5458,9 @@ function txView(r) {
     explanation: r.explanation
   };
 }
+
+// server/guard.ts
+var iface3 = new Interface(GUARD_ABI);
 
 // server/handlers.ts
 var TX_HASH = /^0x[0-9a-fA-F]{64}$/;

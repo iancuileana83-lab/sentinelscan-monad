@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/Card';
 import { LEVELS, LIMITS, TX_RULES, WALLET_RULES, type Rule } from '@/lib/rules';
-import { MONAD_TESTNET, REASON_LABELS } from '@/lib/registryConfig';
+import { GUARD_POLICY, MONAD_TESTNET, REASON_LABELS } from '@/lib/registryConfig';
 // The same pure function the server uses, so the calculator below cannot disagree with the real weights.
 import { FULL_ACTIVITY_TXS, FULL_AGE_DAYS, SPAM_FREE_REPORTS, WEIGHT_FLOOR, reputationWeight } from '../../server/reputation';
 
@@ -130,6 +130,19 @@ export default function HowItWorksPage() {
           <li>No owner, no admin, no fees, no funds held, no upgrade path. The source is verified on the explorer.</li>
           <li>You cannot report your own address or the zero address.</li>
         </ul>
+      </Card>
+
+      <Card title="The on-chain guard (GuardedPay)">
+        <ul className="list-disc space-y-1 pl-5 text-sm text-slate-400">
+          <li>A small contract that reads the registry before it forwards a payment, in the same transaction.</li>
+          <li>Average score from {GUARD_POLICY.confirmScore} with {GUARD_POLICY.minReportersToConfirm} reporter: the payer must tick &quot;I understand the risk&quot;, or the payment reverts.</li>
+          <li>Average score from {GUARD_POLICY.blockScore} with at least {GUARD_POLICY.minReportersToBlock} reporters: the payment is refused, even if acknowledged.</li>
+          <li>One reporter alone can never block a payment, so a single wallet cannot freeze payments to someone. Many wallets still could, which is why this is a demo.</li>
+          <li>It uses the plain on-chain average. It holds no funds, has no owner, and the source is verified on the explorer.</li>
+        </ul>
+        <p className="mt-3 text-xs text-slate-500">
+          Try it on any <Link className="underline" to="/">address page</Link>. The demo address has two test reporters and is blocked; the system account needs a confirmation.
+        </p>
       </Card>
 
       <Card title="Reputation weights (off-chain)">

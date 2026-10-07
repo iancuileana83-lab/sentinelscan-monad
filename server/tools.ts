@@ -2,6 +2,7 @@
 // (/api/agent-tools). Nothing here can sign, send or change anything on-chain.
 import { readRegistry } from './registry.ts';
 import { readWeighted } from './weighted.ts';
+import { guardQuote } from './guard.ts';
 import { buildTxReport, buildWalletReport, NOTICE } from './reports.ts';
 import { REASON_LABELS } from '../src/lib/registryConfig.ts';
 
@@ -57,6 +58,18 @@ export const TOOLS: ToolDefinition[] = [
     },
     annotations: READ_ONLY,
   },
+  {
+    name: 'guard_quote',
+    description:
+      'Ask the on-chain GuardedPay contract on Monad Testnet what it would do if someone paid this address right now: allow, ask for confirmation, or block. It reads the public RiskRegistry (plain on-chain average and reporter count) and applies fixed thresholds: confirmation from an average of 40 with 1 reporter, block from 70 with at least 2 reporters. One reporter alone can never block a payment. Read-only: it sends nothing. Opinions of anonymous wallets, not proof.',
+    inputSchema: {
+      type: 'object',
+      properties: { address: { type: 'string', pattern: '^0x[0-9a-fA-F]{40}$', description: 'The address that would receive the payment.' } },
+      required: ['address'],
+      additionalProperties: false,
+    },
+    annotations: READ_ONLY,
+  },
 ];
 
 export type ToolOutcome = { ok: true; data: unknown } | { ok: false; error: string };
@@ -85,6 +98,10 @@ export async function callTool(name: string, args: unknown, apiKey: string | und
       if (typeof a.hash !== 'string' || !TX_HASH.test(a.hash)) return badArgs('"hash" must be 0x followed by 64 hex characters.');
       if (!apiKey) return badArgs('Server is missing its explorer key.');
       return { ok: true, data: await buildTxReport(a.hash, apiKey) };
+    }
+    if (name === 'guard_quote') {
+      if (typeof a.address !== 'string' || !ADDRESS.test(a.address)) return badArgs('"address" must be 0x followed by 40 hex characters.');
+      return { ok: true, data: { network: 'monad-testnet', ...(await guardQuote(a.address)), notice: NOTICE } };
     }
     if (name === 'get_registry_signals') {
       if (typeof a.address !== 'string' || !ADDRESS.test(a.address)) return badArgs('"address" must be 0x followed by 40 hex characters.');

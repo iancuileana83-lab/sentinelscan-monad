@@ -23,16 +23,16 @@ test('notifications get 202 and no body', async () => {
   assert.equal(out.body, null);
 });
 
-test('tools/list exposes three read-only tools with schemas', async () => {
+test('tools/list exposes four read-only tools with schemas', async () => {
   const { body } = await handleMcp(rpc('tools/list'), undefined);
   const tools = (body as Reply).result.tools;
-  assert.deepEqual(tools.map((t: { name: string }) => t.name), ['scan_wallet', 'scan_transaction', 'get_registry_signals']);
+  assert.deepEqual(tools.map((t: { name: string }) => t.name), ['scan_wallet', 'scan_transaction', 'get_registry_signals', 'guard_quote']);
   for (const t of tools) {
     assert.equal(t.annotations.readOnlyHint, true);
     assert.equal(t.inputSchema.type, 'object');
     assert.equal(t.inputSchema.additionalProperties, false);
   }
-  assert.equal(TOOLS.length, 3);
+  assert.equal(TOOLS.length, 4);
 });
 
 test('no tool can sign or send: no write-style tool names exist', () => {
@@ -46,6 +46,7 @@ test('bad arguments come back as tool errors, without touching the network', asy
     ['scan_wallet', { address: '0x' + '1'.repeat(40), extra: 1 }],
     ['scan_transaction', { hash: '0x' + '1'.repeat(40) }],
     ['get_registry_signals', { address: '0x' + '1'.repeat(40), reporter: 'x' }],
+    ['guard_quote', { address: 'nope' }],
     ['scan_wallet', 'a string'],
     ['does_not_exist', {}],
   ];
@@ -86,4 +87,13 @@ test('limiter blocks after the maximum inside the window and recovers', () => {
   assert.ok(allow(key, 2, 1000, 10));
   assert.ok(!allow(key, 2, 1000, 20));
   assert.ok(allow(key, 2, 1000, 2000));
+});
+
+import { explainDecision } from '../server/guard.ts';
+
+test('guard explanations match the policy and never promise safety', () => {
+  assert.match(explainDecision('block', 85, 2), /refused even if the payer confirms/);
+  assert.match(explainDecision('confirm', 55, 1), /One reporter alone can never block/);
+  assert.match(explainDecision('allow', 0, 0), /not a safety guarantee/);
+  assert.match(explainDecision('allow', 20, 3), /below the confirmation threshold of 40/);
 });

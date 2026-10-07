@@ -3,9 +3,10 @@ import { Link, useParams } from 'react-router-dom';
 import { ExternalLink } from 'lucide-react';
 import { Card, ErrorNote } from '@/components/Card';
 import CopyLink from '@/components/CopyLink';
+import GuardCard from '@/components/GuardCard';
 import Loading from '@/components/Loading';
 import ScanResult from '@/components/ScanResult';
-import { MONAD_TESTNET } from '@/lib/registryConfig';
+import { MONAD_TESTNET, labelFor } from '@/lib/registryConfig';
 import { useApi } from '@/lib/useApi';
 import type { ScanView } from '@/lib/viewTypes';
 import { EventRow, type FeedEvent } from '@/pages/RegistryPage';
@@ -42,6 +43,7 @@ export default function AddressPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-semibold text-slate-100">Address</h1>
+          {labelFor(address) && <p className="mt-1 inline-block rounded-full bg-violet-500/10 px-3 py-0.5 text-xs text-violet-300">{labelFor(address)}</p>}
           <p className="mt-1 break-all font-mono text-sm text-slate-400">{address}</p>
           <a
             className="mt-1 inline-flex items-center gap-1 text-xs text-slate-500 underline"
@@ -58,6 +60,8 @@ export default function AddressPage() {
       {scan.loading && <Loading />}
       {scan.error && <ErrorNote message={scan.error} />}
       {scan.data && <ScanResult view={scan.data.data} warning={scan.data.warning} linkToAddress={false} />}
+
+      <GuardCard address={address} />
 
       <Card title="History of signals about this address">
         {history.loading && <Loading />}

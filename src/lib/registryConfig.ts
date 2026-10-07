@@ -2,6 +2,24 @@
 // The address must match deployments/monad-testnet.json (checked by a test).
 export const REGISTRY_ADDRESS = '0xb0C3Be753788a5962DE52db929f49df02700AFd4';
 
+// GuardedPay: pays only after reading RiskRegistry (see contracts/GuardedPay.sol).
+export const GUARD_ADDRESS = '0x6e124EB8B980ae3e1CB79f856b8dC0d6F691d5bD';
+export const GUARD_POLICY = { confirmScore: 40, blockScore: 70, minReportersToConfirm: 1, minReportersToBlock: 2 } as const;
+
+// A fresh address created for the demo (its key was discarded). Two test wallets recorded signals about it.
+export const DEMO_TARGET = '0x3dc0Cc8bc1BbED963Fc2841b9a975Ab933A94F42';
+
+/** Friendly names for addresses this app knows about. Everything else is shown as a plain address. */
+export const KNOWN_LABELS: Record<string, string> = {
+  [REGISTRY_ADDRESS.toLowerCase()]: 'RiskRegistry contract',
+  [GUARD_ADDRESS.toLowerCase()]: 'GuardedPay contract',
+  [DEMO_TARGET.toLowerCase()]: 'Demo address (made for this demo)',
+  '0x0228ba8c75b9eaf02fa06872028da9754b2c8874': 'Demo test reporter',
+  '0x0c6b75389a0d48f2eb16cc91022728fb6cbe7fc5': 'Project test wallet',
+  '0x6f49a8f621353f12378d0046e7d7e4b9b249dc9e': 'System account (staking rewards)',
+};
+export const labelFor = (address: string): string | undefined => KNOWN_LABELS[address.toLowerCase()];
+
 export const MONAD_TESTNET = {
   chainId: 10143,
   chainIdHex: '0x279f',

@@ -4993,6 +4993,17 @@ var Interface = class _Interface {
 
 // src/lib/registryConfig.ts
 var REGISTRY_ADDRESS = "0xb0C3Be753788a5962DE52db929f49df02700AFd4";
+var GUARD_ADDRESS = "0x6e124EB8B980ae3e1CB79f856b8dC0d6F691d5bD";
+var GUARD_POLICY = { confirmScore: 40, blockScore: 70, minReportersToConfirm: 1, minReportersToBlock: 2 };
+var DEMO_TARGET = "0x3dc0Cc8bc1BbED963Fc2841b9a975Ab933A94F42";
+var KNOWN_LABELS = {
+  [REGISTRY_ADDRESS.toLowerCase()]: "RiskRegistry contract",
+  [GUARD_ADDRESS.toLowerCase()]: "GuardedPay contract",
+  [DEMO_TARGET.toLowerCase()]: "Demo address (made for this demo)",
+  "0x0228ba8c75b9eaf02fa06872028da9754b2c8874": "Demo test reporter",
+  "0x0c6b75389a0d48f2eb16cc91022728fb6cbe7fc5": "Project test wallet",
+  "0x6f49a8f621353f12378d0046e7d7e4b9b249dc9e": "System account (staking rewards)"
+};
 var REASON_LABELS = [
   "Other",
   "Very new wallet",
@@ -5036,6 +5047,15 @@ var REGISTRY_ABI = [
   "function getSignal(address subject, address reporter) view returns (uint8 score, uint8 reasonCode, uint64 reportedAt)",
   "event SignalRecorded(address indexed subject, address indexed reporter, uint8 score, uint8 reasonCode, uint32 reporterCount)",
   "event SignalRetracted(address indexed subject, address indexed reporter, uint32 reporterCount)"
+];
+var GUARD_ABI = [
+  "function pay(address recipient, bool acknowledgeRisk) payable",
+  "function quote(address recipient) view returns (uint8 decision, uint8 averageScore, uint32 reporters)",
+  "error Blocked(uint8 averageScore, uint32 reporters)",
+  "error ConfirmationRequired(uint8 averageScore, uint32 reporters)",
+  "error InvalidRecipient()",
+  "error NoValue()",
+  "error TransferFailed()"
 ];
 
 // server/monad.ts
@@ -5363,6 +5383,36 @@ async function readWeighted(subject, apiKey) {
     reporters,
     note: "Weights come from each reporter wallet's public history on Monad Testnet (age, activity, how many addresses they reported). They are a heuristic: patient attackers can age wallets, so this weakens cheap spam but does not prevent it.",
     historyTruncated: truncated
+  };
+}
+
+// server/guard.ts
+var iface3 = new Interface(GUARD_ABI);
+var NAMES = ["allow", "confirm", "block"];
+function explainDecision(decision, averageScore, reporters) {
+  const p = GUARD_POLICY;
+  if (decision === "block") {
+    return `Blocked: ${reporters} reporters recorded an average score of ${averageScore}, at or above ${p.blockScore} with at least ${p.minReportersToBlock} reporters. The payment would be refused even if the payer confirms.`;
+  }
+  if (decision === "confirm") {
+    return `Confirmation needed: ${reporters} reporter(s) recorded an average score of ${averageScore}, at or above ${p.confirmScore}. The payment goes through only if the payer explicitly acknowledges the risk. One reporter alone can never block a payment.`;
+  }
+  if (reporters === 0) return "Allowed: nobody has recorded a signal about this address. That is not a safety guarantee.";
+  return `Allowed: ${reporters} reporter(s) recorded an average score of ${averageScore}, below the confirmation threshold of ${p.confirmScore}.`;
+}
+async function guardQuote(recipient) {
+  const data = iface3.encodeFunctionData("quote", [recipient]);
+  const raw = await rpc("eth_call", [{ to: GUARD_ADDRESS, data }, "latest"]);
+  const [decision, averageScore, reporters] = iface3.decodeFunctionResult("quote", raw);
+  const name = NAMES[Number(decision)] ?? "allow";
+  return {
+    guard: GUARD_ADDRESS,
+    recipient,
+    decision: name,
+    averageScore: Number(averageScore),
+    reporters: Number(reporters),
+    policy: GUARD_POLICY,
+    explanation: explainDecision(name, Number(averageScore), Number(reporters))
   };
 }
 
@@ -6043,6 +6093,17 @@ var TOOLS = [
       additionalProperties: false
     },
     annotations: READ_ONLY
+  },
+  {
+    name: "guard_quote",
+    description: "Ask the on-chain GuardedPay contract on Monad Testnet what it would do if someone paid this address right now: allow, ask for confirmation, or block. It reads the public RiskRegistry (plain on-chain average and reporter count) and applies fixed thresholds: confirmation from an average of 40 with 1 reporter, block from 70 with at least 2 reporters. One reporter alone can never block a payment. Read-only: it sends nothing. Opinions of anonymous wallets, not proof.",
+    inputSchema: {
+      type: "object",
+      properties: { address: { type: "string", pattern: "^0x[0-9a-fA-F]{40}$", description: "The address that would receive the payment." } },
+      required: ["address"],
+      additionalProperties: false
+    },
+    annotations: READ_ONLY
   }
 ];
 function badArgs(message) {
@@ -6066,6 +6127,10 @@ async function callTool(name, args, apiKey) {
       if (typeof a.hash !== "string" || !TX_HASH.test(a.hash)) return badArgs('"hash" must be 0x followed by 64 hex characters.');
       if (!apiKey) return badArgs("Server is missing its explorer key.");
       return { ok: true, data: await buildTxReport(a.hash, apiKey) };
+    }
+    if (name === "guard_quote") {
+      if (typeof a.address !== "string" || !ADDRESS.test(a.address)) return badArgs('"address" must be 0x followed by 40 hex characters.');
+      return { ok: true, data: { network: "monad-testnet", ...await guardQuote(a.address), notice: NOTICE } };
     }
     if (name === "get_registry_signals") {
       if (typeof a.address !== "string" || !ADDRESS.test(a.address)) return badArgs('"address" must be 0x followed by 40 hex characters.');

@@ -89,6 +89,22 @@ Safety choices: tool outputs carry a "signal, not verdict" notice; token symbols
 on-chain text are cleaned and shortened because they are untrusted input; unexpected arguments are
 rejected; requests are rate limited per client on a best-effort basis.
 
+## On-chain guard: GuardedPay
+
+[`contracts/GuardedPay.sol`](contracts/GuardedPay.sol), deployed at
+[`0x6e124EB8B980ae3e1CB79f856b8dC0d6F691d5bD`](https://testnet.monadscan.com/address/0x6e124EB8B980ae3e1CB79f856b8dC0d6F691d5bD#code)
+(source verified). `pay(recipient, acknowledgeRisk)` forwards the attached MON only after reading RiskRegistry:
+
+| Registry says | What happens |
+|---|---|
+| average score below 40, or nobody reported | allowed |
+| average from 40 with 1+ reporter | reverts unless `acknowledgeRisk` is true |
+| average from 70 with 2+ reporters | refused, even if acknowledged |
+
+One reporter alone can never block a payment. No owner, no custody, no state. `quote(recipient)` shows the decision
+without sending anything, and agents get it as the read-only `guard_quote` tool. Verified on testnet with the scripts in
+`scripts/`: a blocked demo address, a confirmation-required system account and an allowed payment.
+
 ## Reputation-weighted signals (off-chain, no contract change)
 
 The contract counts every reporter equally. The app and the agent tool also show a
@@ -131,6 +147,7 @@ is a new, standalone app. What is reused and what is new:
 - A new standalone app and backend. The earlier project depended on Supabase Edge Functions. This
   one uses a few small serverless functions in `api/` that keep the explorer key on the server.
 - **Read-only AI-agent tools**: an MCP server and a JSON API with schemas (`server/tools.ts`, `server/mcp.ts`), plus a demo client (`examples/agent-demo.mjs`).
+- **GuardedPay**: an on-chain guard that consults the registry before forwarding a payment, deployed and verified, with 11 tests.
 - **Reputation-weighted signals**: off-chain weights from reporter wallet history (`server/reputation.ts`, `server/events.ts`, `server/weighted.ts`), shown in the app and returned to agents.
 - Tests for the scoring, the agent tools, the weighting and the app's contract address, and this documentation.
 

@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
-import { registryFeed, registryView, reporterView, txScan, walletScan, type HandlerResult } from './server/handlers.ts';
+import { guardView, registryFeed, registryView, reporterView, txScan, walletScan, type HandlerResult } from './server/handlers.ts';
 import { mcpRoute, toolsRoute } from './server/agentApi.ts';
 
 // In development the same handlers that Vercel runs in production are served here,
@@ -14,6 +14,7 @@ function devApi(apiKey: string | undefined): Plugin {
     '/api/registry': (u) => registryView(q(u, 'address'), q(u, 'reporter'), apiKey),
     '/api/registry-feed': (u) => registryFeed(q(u, 'subject'), q(u, 'reporter'), apiKey),
     '/api/reporter': (u) => reporterView(q(u, 'address'), apiKey),
+    '/api/guard': (u) => guardView(q(u, 'address')),
   };
   return {
     name: 'sentinelscan-dev-api',

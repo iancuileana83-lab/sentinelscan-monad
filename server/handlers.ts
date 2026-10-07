@@ -4,6 +4,7 @@ import { readRegistry } from './registry.ts';
 import { readReporter, readWeighted } from './weighted.ts';
 import { registryEvents, registryOverview } from './registryFeed.ts';
 import { txView, walletView } from './views.ts';
+import { guardQuote } from './guard.ts';
 
 export interface HandlerResult {
   status: number;
@@ -85,6 +86,15 @@ export async function reporterView(address: unknown, apiKey: string | undefined)
   if (!apiKey) return fail(500, 'Server is missing its explorer key (ETHERSCAN_API_KEY).');
   try {
     return { status: 200, body: { data: await readReporter(address.trim(), apiKey) } };
+  } catch (e) {
+    return fail(502, e instanceof Error ? e.message : 'Unknown server error');
+  }
+}
+
+export async function guardView(address: unknown): Promise<HandlerResult> {
+  if (typeof address !== 'string' || !ADDRESS.test(address.trim())) return fail(400, 'Enter a valid wallet address: 0x followed by 40 hex characters.');
+  try {
+    return { status: 200, body: { data: await guardQuote(address.trim()) } };
   } catch (e) {
     return fail(502, e instanceof Error ? e.message : 'Unknown server error');
   }

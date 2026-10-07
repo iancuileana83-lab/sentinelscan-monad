@@ -3,5 +3,21 @@
   "contract": "RiskRegistry",
   "address": "0xb0C3Be753788a5962DE52db929f49df02700AFd4",
   "deployTx": "0x2d86c87d9c08bef92e2beaee42c24bab5b90e3dc2dd606240e644ca5f644113c",
-  "deployer": "0x0c6b75389A0d48F2eb16Cc91022728fb6CBE7FC5"
+  "deployer": "0x0c6b75389A0d48F2eb16Cc91022728fb6CBE7FC5",
+  "guardedPay": {
+    "address": "0x6e124EB8B980ae3e1CB79f856b8dC0d6F691d5bD",
+    "deployTx": "0xc908fa3323666c9dae56cb32dc45d0b463943593018a8a3c83d8026c74d8f21c",
+    "constructorArgs": [
+      "0xb0C3Be753788a5962DE52db929f49df02700AFd4",
+      40,
+      70,
+      1,
+      2
+    ]
+  },
+  "demo": {
+    "target": "0x3dc0Cc8bc1BbED963Fc2841b9a975Ab933A94F42",
+    "reporterB": "0x0228ba8C75b9eAF02Fa06872028DA9754B2C8874",
+    "note": "Demo address generated for the demo; its key was discarded. Signals were recorded by two test wallets."
+  }
 }
