@@ -19,7 +19,7 @@ function llmConfig(env) {
       provider: "gemini",
       apiKey: env.GEMINI_API_KEY,
       baseUrl: env.LLM_BASE_URL || "https://generativelanguage.googleapis.com/v1beta/openai",
-      model: env.LLM_MODEL || "gemini-2.5-flash"
+      model: env.LLM_MODEL || "gemini-3.1-flash-lite"
     };
   }
   return null;
