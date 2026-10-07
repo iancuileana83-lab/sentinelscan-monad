@@ -1,100 +1,58 @@
 # SentinelScan on Monad
 
-A wallet and transaction risk scanner for **Monad Testnet**, with a small public contract
-where anyone can record a risk **signal** about an address. Built for the Monad Metropolis
-hackathon, track *Trust, Identity & AI Infrastructure*.
+Risk **signals** for wallets and transactions on **Monad Testnet**, a public on-chain registry where anyone
+can record a signal, a guard contract that reads the registry before it forwards a payment, a live block
+radar, and read-only tools plus a real AI agent that checks an address before paying it. Built for the
+Monad Metropolis hackathon, track *Trust, Identity & AI Infrastructure*.
 
-**Live app:** https://sentinelscan-monad.vercel.app
+**Live app:** https://monad-risk-signals.vercel.app (backup address: https://sentinelscan-monad.vercel.app)
 
 > **Testnet only.** Everything here runs on Monad Testnet (chain ID 10143). Testnet MON has no
-> real value, and the app never asks for real money.
+> real value, and the app never asks for real money. A score is a **signal, not a verdict**.
+
+## Try it in three minutes (no wallet needed)
+
+1. **Scanner**: press *System account*. You get a 65/100 "Caution" with the reasons. It is a Monad system account that pays staking rewards, which is exactly why a score is not a verdict.
+2. **Address page** for the demo address (`/address/0x3dc0…4F42`): two test reporters recorded high scores, so the on-chain **GuardedPay** card says *Blocked*.
+3. **For AI agents** → *Run the agent* on the same address: a real model calls our tools, reads numbered evidence and refuses with cited reasons. It never sends money.
+4. **Live radar**: new blocks stream in, a few per second.
+
+Recording a signal or trying a guarded payment needs a browser wallet and testnet MON (free from https://faucet.monad.xyz).
+Note for judges: some wallets may flag this new `vercel.app` preview domain. That is a false positive that has been
+reported for review. Everything except those two wallet actions works without a wallet, the contracts and the source are
+verified and public, and if you do connect a wallet, please use a throwaway testnet account.
 
 ## The app
 
 | Page | What it is |
 |---|---|
-| **Scanner** `/` | Scan a wallet or transaction; examples to try; no wallet needed |
-| **Registry** `/registry` | Everything recorded in RiskRegistry, rebuilt from its events: stats, most-reported addresses, recent activity |
-| **Address** `/address/0x…` | A shareable page for one address: scan, public signals (plain and reputation-weighted), full history |
+| **Scanner** `/` | Scan a wallet or transaction; examples to try; no wallet needed; optional AI analyst notes that cite evidence |
+| **Registry** `/registry` | Everything recorded in RiskRegistry, rebuilt from its events: stats, activity and score charts, most-reported addresses, recent activity |
+| **Address** `/address/0x…` | A shareable page for one address: scan, public signals (plain and reputation-weighted), the GuardedPay decision, full history |
 | **Reporter** `/reporter/0x…` | One reporter's weight, how it is built, and everything they recorded or retracted |
-| **Live radar** `/radar` | New blocks as they arrive (a few per second), with quick hints: payments to addresses that have live registry signals, null-address sends, self-transfers, very large transfers |
+| **Live radar** `/radar` | New blocks as they arrive, with quick hints: payments to addresses that have live registry signals, null-address sends, self-transfers, very large transfers |
 | **For AI agents** `/agents` | The read-only MCP and JSON tools, a live playground, and a real model-driven agent that decides whether to pay an address and cites evidence |
-| **How it works** `/how-it-works` | Every scoring rule with its points, the reputation formula with a calculator, and the honest limits |
+| **How it works** `/how-it-works` | Every scoring rule with its points, the guard policy, the reputation formula with a calculator, and the honest limits |
 
-## What it does
+## Contracts (Monad Testnet, source verified)
 
-1. **Scan a wallet or a transaction** on Monad Testnet. You get a 0 to 100 score, the signals
-   behind it (for example "very new wallet" or "one-way outflow"), and a plain-language
-   explanation that separates facts read from the chain from the interpretation of them.
-2. **See what the chain already knows.** Under every wallet scan, the app reads the
-   `RiskRegistry` contract and shows how many reporters have recorded a signal for that address,
-   their average score and the date of the last report.
-3. **Record your own signal.** Connect a wallet (MetaMask or similar), press *Record on Monad*,
-   and your score and main reason are stored on-chain. Recording again updates your signal, and
-   *Retract mine* removes it.
+| Contract | Address | What it does |
+|---|---|---|
+| **RiskRegistry** | [`0xb0C3Be753788a5962DE52db929f49df02700AFd4`](https://testnet.monadscan.com/address/0xb0C3Be753788a5962DE52db929f49df02700AFd4#code) | A public notice board: anyone records a score (0 to 100) and one reason code about an address |
+| **GuardedPay** | [`0x6e124EB8B980ae3e1CB79f856b8dC0d6F691d5bD`](https://testnet.monadscan.com/address/0x6e124EB8B980ae3e1CB79f856b8dC0d6F691d5bD#code) | Forwards a payment only after reading the registry |
 
-Scores describe how likely a pattern is to be risky. They are **signals, not verdicts**, and not
-financial advice. A "Caution" score is just as likely to be a bot, a payout account or a system
-account as anything harmful.
+### RiskRegistry
 
-## The on-chain piece: `RiskRegistry`
-
-| | |
-|---|---|
-| Network | Monad Testnet (10143) |
-| Address | [`0xb0C3Be753788a5962DE52db929f49df02700AFd4`](https://testnet.monadscan.com/address/0xb0C3Be753788a5962DE52db929f49df02700AFd4#code) (source verified) |
-| Source | [`contracts/RiskRegistry.sol`](contracts/RiskRegistry.sol) |
-
-Design, kept deliberately small:
-
-- One live signal per (reporter, subject). Reporting again **updates** your own signal instead of
-  adding another, so a single wallet cannot inflate the count.
+- One live signal per (reporter, subject). Reporting again **updates** your own signal instead of adding another, so a single wallet cannot inflate the count.
 - A reporter can **retract** their own signal. Nobody can change or remove anyone else's.
-- Reasons are a fixed list of codes (new wallet, one-way outflow, and so on). There is no free
-  text, so the contract cannot be used to publish accusations.
-- No owner, no admin, no fees, no funds held, no upgrade path. It rejects any native funds sent to it.
-- You cannot record a signal about your own address or the zero address.
+- Reasons are a fixed list of codes (new wallet, one-way outflow, and so on). There is no free text, so the contract cannot be used to publish accusations.
+- No owner, no admin, no fees, no funds held, no upgrade path. You cannot record a signal about your own address or the zero address.
 
-Honest limit: anyone can use many wallets, so the reporter count is a hint, not proof. This is a
-demo of a public reputation primitive, not a trust oracle.
+Honest limit: anyone can use many wallets, so the reporter count is a hint, not proof.
 
-## For AI agents: read-only tools (MCP and JSON)
+### GuardedPay
 
-The same scanner is available to AI agents. Three tools, all **read-only**: an agent cannot sign
-or send anything with them, and none of them records a signal on-chain.
-
-| Tool | What it returns |
-|---|---|
-| `scan_wallet` | 0-100 risk signal, the individual signals, facts, and evidence (recent transaction hashes, top counterparties) |
-| `scan_transaction` | 0-100 risk signal, the signals and facts for one transaction |
-| `get_registry_signals` | How many reporters recorded a signal about an address in `RiskRegistry`, their average score, last report time |
-
-- **MCP server** (Streamable HTTP, stateless): `https://monad-risk-signals.vercel.app/api/mcp`
-- **Plain JSON**: `GET /api/agent-tools` returns the tool list with JSON schemas, and
-  `POST /api/agent-tools` with `{"tool": "scan_wallet", "arguments": {"address": "0x..."}}` calls one.
-
-Add it to Claude Code:
-
-```bash
-claude mcp add --transport http sentinelscan-monad https://monad-risk-signals.vercel.app/api/mcp
-```
-
-Run the scripted demo (an official MCP client discovers the tools, calls them and answers only
-from the returned evidence; it uses no language model):
-
-```bash
-node examples/agent-demo.mjs
-```
-
-Safety choices: tool outputs carry a "signal, not verdict" notice; token symbols and other
-on-chain text are cleaned and shortened because they are untrusted input; unexpected arguments are
-rejected; requests are rate limited per client on a best-effort basis.
-
-## On-chain guard: GuardedPay
-
-[`contracts/GuardedPay.sol`](contracts/GuardedPay.sol), deployed at
-[`0x6e124EB8B980ae3e1CB79f856b8dC0d6F691d5bD`](https://testnet.monadscan.com/address/0x6e124EB8B980ae3e1CB79f856b8dC0d6F691d5bD#code)
-(source verified). `pay(recipient, acknowledgeRisk)` forwards the attached MON only after reading RiskRegistry:
+`pay(recipient, acknowledgeRisk)` forwards the attached MON only after reading RiskRegistry:
 
 | Registry says | What happens |
 |---|---|
@@ -103,13 +61,45 @@ rejected; requests are rate limited per client on a best-effort basis.
 | average from 70 with 2+ reporters | refused, even if acknowledged |
 
 One reporter alone can never block a payment. No owner, no custody, no state. `quote(recipient)` shows the decision
-without sending anything, and agents get it as the read-only `guard_quote` tool. Verified on testnet with the scripts in
+without sending anything, and agents get it as the read-only `guard_quote` tool. Checked on testnet with the scripts in
 `scripts/`: a blocked demo address, a confirmation-required system account and an allowed payment.
+
+The demo address `0x3dc0…4F42` was generated for this demo (its key was discarded) and two test wallets recorded signals about it, so the "Blocked" case can be shown. It is labelled as a demo in the app.
+
+## For AI agents: read-only tools (MCP and JSON)
+
+Four tools, all **read-only**: an agent cannot sign or send anything with them, and none of them records a signal.
+
+| Tool | What it returns |
+|---|---|
+| `scan_wallet` | 0-100 risk signal, the individual signals, facts, and evidence (recent transaction hashes, top counterparties) |
+| `scan_transaction` | 0-100 risk signal, the signals and facts for one transaction |
+| `get_registry_signals` | Reporters in `RiskRegistry`, plain and reputation-weighted averages, last report time |
+| `guard_quote` | What GuardedPay would do for an address right now: allow, confirm or block |
+
+- **MCP server** (Streamable HTTP, stateless): `https://monad-risk-signals.vercel.app/api/mcp`
+- **Plain JSON**: `GET /api/agent-tools` returns the tool list with JSON schemas, and `POST /api/agent-tools` with `{"tool": "scan_wallet", "arguments": {"address": "0x..."}}` calls one.
+
+```bash
+claude mcp add --transport http sentinelscan-monad https://monad-risk-signals.vercel.app/api/mcp
+node examples/agent-demo.mjs        # a scripted MCP client (no language model)
+```
+
+### The AI agent and the analyst
+
+On the *For AI agents* page a real language model (Gemini through an OpenAI-compatible client; Qwen is also supported) is asked whether to pay an address. It chooses which tools to call, reads **numbered evidence** (E1, E2, ...), and answers *pay*, *ask a human* or *refuse* with reasons that cite evidence ids. The analyst on wallet scans writes short notes the same way.
+
+Safety, enforced in code and covered by tests with a fake model:
+
+- The agent never sends money; it only shows the call it would make.
+- It cannot override the on-chain guard: a blocked address is always refused and a confirmation-needed one always goes to a human. The guard is consulted even if the model forgets.
+- Every cited evidence id must exist; claims that cite nothing real are dropped, and a failed or off-script model falls back to a plain answer built from the same evidence.
+- Token names, symbols and other text chosen by contract deployers never reach the model (they could carry instructions). The agent can only look at the address it was asked about and only at the read-only tools.
+- Limits: per visitor per hour and per day, a global daily cap, ten-minute caching, a kill switch (`AI_DISABLED=1`), and a free-tier key without billing as the hard cap. The in-memory limits are best effort because serverless instances do not share memory.
 
 ## Reputation-weighted signals (off-chain, no contract change)
 
-The contract counts every reporter equally. The app and the agent tool also show a
-**reputation-weighted score**, computed off-chain from public Monad Testnet data, so cheap spam counts for less:
+The contract counts every reporter equally. The app and the agent tools also show a **reputation-weighted score**, computed off-chain from public data, so cheap spam counts for less:
 
 `weight = 0.1 + 0.9 × (0.5 × age + 0.5 × activity) × restraint`
 
@@ -117,55 +107,52 @@ The contract counts every reporter equally. The app and the agent tool also show
 - **activity**: transactions seen (up to the latest 100), full credit at 50, on a log scale;
 - **restraint**: 1 for up to 10 live signals recorded across all addresses, then falling (never below 0.2 in the formula).
 
-A brand-new, silent wallet still counts, at the floor weight of 0.1. The panel also shows the plain average and the
-"effective reporters" number (how many equal reporters the weights are worth). Each live signal is confirmed against the
-contract itself, and the event history is only used to list reporters. This is a heuristic: patient attackers can age
-wallets, so it weakens cheap spam but cannot prevent it. The formula lives in `server/reputation.ts` and is covered by tests.
+A brand-new, silent wallet still counts, at the floor weight of 0.1. Each live signal is confirmed against the contract itself; the event history is only used to list reporters. This is a heuristic: patient attackers can age wallets, so it weakens cheap spam but cannot prevent it. The formula lives in `server/reputation.ts`, with tests.
+
+## Powered by Envio HyperSync
+
+With a free Envio token configured (`ENVIO_API_TOKEN`), two core features read their data through **Envio HyperSync**:
+
+- the **registry history**: every `SignalRecorded` and `SignalRetracted` event, which drives the Registry Explorer, address history, reporter weights, and the agent's evidence;
+- the **live radar**: blocks and transactions in real time (HyperSync tracks the chain head, and one query returns a whole batch of blocks in a few hundred milliseconds).
+
+The Etherscan API V2 and the public Monad RPCs remain automatic fallbacks, so the app still works if HyperSync is unavailable. The Registry page states which source it used.
 
 ## What's new for Metropolis
 
 SentinelScan started earlier as an Ethereum and Arbitrum scanner,
 [sentinelscan-web3-fraud-scanner](https://github.com/iancuileana83-lab/sentinelscan-web3-fraud-scanner).
-That project was built before the hackathon and is **not** what is submitted here. This repository
-is a new, standalone app. What is reused and what is new:
+That project was built before the hackathon and is **not** what is submitted here. This repository is a new, standalone app. What is reused and what is new:
 
 **Reused (ported from the earlier repo, credited here)**
 
-- The rule-based scoring logic: `src/lib/walletRisk.ts`, `src/lib/txRisk.ts`,
-  `src/lib/riskExplainer.ts`, and the `RiskGauge` and `RiskExplainer` components. Changes made
-  here: Monad wording, relative imports, and softer wording on two signals so they read as signals,
-  not accusations.
+- The rule-based scoring logic: `src/lib/walletRisk.ts`, `src/lib/txRisk.ts`, `src/lib/riskExplainer.ts`, and the explainer component. Changes made here: Monad wording, relative imports, and softer wording on several signals so they read as signals, not accusations. The gauge was redesigned.
 
 **New, written during the build window**
 
-- Everything that touches Monad: the data layer (`server/monad.ts`) using Etherscan API V2 for
-  chain 10143 plus the public Monad Testnet RPCs with automatic fallback (one public RPC stalls on
-  some calls).
-- **The `RiskRegistry` smart contract**, its 8 tests, and a deploy script that refuses any network
-  other than Monad Testnet.
-- Reading the registry from the app (`server/registry.ts`) and the wallet flow: connect, switch or
-  add Monad Testnet, record, retract (`src/lib/wallet.ts`, `src/components/RegistryPanel.tsx`).
-- A new standalone app and backend. The earlier project depended on Supabase Edge Functions. This
-  one uses a few small serverless functions in `api/` that keep the explorer key on the server.
-- **Read-only AI-agent tools**: an MCP server and a JSON API with schemas (`server/tools.ts`, `server/mcp.ts`), plus a demo client (`examples/agent-demo.mjs`).
-- **AI agent and analyst**: an evidence-cited payment agent (Gemini via an OpenAI-compatible client; Qwen also supported) that can never override the on-chain guard, plus a short analyst on wallet scans. Every claim must cite numbered evidence, token names never reach the model, limits and a kill switch are built in (`server/agent.ts`, `server/analyst.ts`, `server/aiGuard.ts`).
-- **Live risk radar**: follows new blocks and flags transactions using only block data and the public registry (`server/radar.ts`).
-- **GuardedPay**: an on-chain guard that consults the registry before forwarding a payment, deployed and verified, with 11 tests.
-- **Reputation-weighted signals**: off-chain weights from reporter wallet history (`server/reputation.ts`, `server/events.ts`, `server/weighted.ts`), shown in the app and returned to agents.
-- Tests for the scoring, the agent tools, the weighting and the app's contract address, and this documentation.
+- Everything that touches Monad: the data layer (`server/monad.ts`), Etherscan API V2 for chain 10143 plus public RPCs with fallback, and Envio HyperSync.
+- **Two smart contracts**, RiskRegistry (8 tests) and GuardedPay (11 tests), deploy scripts that refuse any network other than Monad Testnet, verification, and a seeding script for the demo address.
+- The wallet flow (connect, switch or add Monad Testnet, record, retract, guarded payment), loaded only when a visitor clicks a wallet button.
+- A new standalone, multi-page app and backend (serverless functions that keep keys on the server), a violet design with light and dark modes.
+- **Read-only AI-agent tools** (MCP and JSON), a real **AI payment agent** and **analyst** with evidence citations, limits and tests.
+- **Reputation-weighted signals**, the **Registry Explorer**, address and reporter pages, and the **live risk radar**.
+- 54 app tests (scoring and every rule on the How-it-works page, agent safety with a fake model, limits, weighting, radar, HyperSync parsing) and 19 contract tests.
 
 ## How it works
 
 ```
-Browser (React + Vite) ──► /api/wallet-scan, /api/tx-scan, /api/registry   (serverless, holds the explorer key)
-        │                              │
-        │ wallet signs                 ├─► Etherscan API V2, chainid 10143 (history, token transfers)
-        ▼                              └─► Monad Testnet RPC (transactions, receipts, contract reads)
-RiskRegistry on Monad Testnet
+Browser (React + Vite, light/dark)
+   │  pages: Scanner · Registry · Address · Reporter · Radar · Agents · How it works
+   ▼
+Serverless functions in /api  (explorer key, AI key and Envio token stay on the server)
+   ├─► Envio HyperSync ........ registry events, new blocks and transactions
+   ├─► Etherscan API V2 ....... wallet history, token transfers (and event fallback)
+   ├─► Monad Testnet RPC ...... transactions, receipts, contract reads (and block fallback)
+   └─► Gemini (or Qwen) ....... the agent and the analyst, only ever fed numbered evidence
+Browser wallet ──signs──► RiskRegistry / GuardedPay on Monad Testnet
 ```
 
-The explorer key never reaches the browser. Wallet scans look at the **latest 100 transactions**,
-not the complete history.
+Wallet scans look at the **latest 100 transactions**, not the complete history.
 
 ## Run it yourself
 
@@ -173,39 +160,30 @@ You need Node 22 or newer.
 
 ```bash
 npm install
-cp .env.example .env     # then fill in ETHERSCAN_API_KEY (free, https://etherscan.io/myapikey)
+cp .env.example .env     # fill in ETHERSCAN_API_KEY (free, https://etherscan.io/myapikey)
 npm run dev              # http://localhost:5173
 ```
 
-Checks:
+Optional settings in `.env`: `GEMINI_API_KEY` (or `QWEN_API_KEY`) for the AI parts, `ENVIO_API_TOKEN` for HyperSync, `DEPLOYER_PRIVATE_KEY` only to deploy contracts (a throwaway testnet key, never committed).
 
 ```bash
 npm run typecheck
-npm test                 # scoring and config tests
-npm run test:contract    # contract tests on a local in-memory chain
+npm test                 # 54 app tests, no network needed
+npm run test:contract    # 19 contract tests on a local in-memory chain
+npx hardhat run scripts/deploy.cjs --network monadTestnet        # RiskRegistry
+npx hardhat run scripts/deploy-guard.cjs --network monadTestnet   # GuardedPay
 ```
 
-Deploying your own copy of the contract (needs a throwaway testnet wallet and free MON from
-https://faucet.monad.xyz; put its key in `.env` as `DEPLOYER_PRIVATE_KEY`, never commit it):
-
-```bash
-npx hardhat run scripts/deploy.cjs --network monadTestnet
-```
-
-Hosting: the repo deploys to Vercel as is. Set the `ETHERSCAN_API_KEY` environment variable in the
-project settings. The functions in `api/` are generated by `npm run build:api` from `api-src/` and
-committed, so hosting does not depend on how a host compiles TypeScript.
+Hosting: the repo deploys to Vercel as is. Set the environment variables in the project settings. The functions in `api/` are generated by `npm run build:api` from `api-src/` and committed, so hosting does not depend on how a host compiles TypeScript.
 
 ## Known limits
 
-- Monad Testnet was reset in December 2025, so almost every wallet counts as "recent" and the
-  *very new wallet* signal fires often. Treat it as weak evidence.
-- Testnet has little real fraud. The scanner's rules are heuristics, not a trained model, and are
-  tuned for demonstration.
-- Wallet analysis covers the latest 100 transactions only.
-- The registry is permissionless and testnet-only. It can contain careless or hostile opinions,
-  which is why it stores scores and reason codes, not accusations.
-- Not audited. Do not use it with real funds.
+- Monad Testnet was reset in December 2025, so almost every wallet counts as "recent" and the *very new wallet* signal fires often. Treat it as weak evidence. Real testnet traffic is mostly bots, so many wallets land in "Caution".
+- The rules are hand-written heuristics, not a trained model, and are tuned for demonstration. Wallet analysis covers the latest 100 transactions only.
+- The registry is permissionless and testnet-only. It can contain careless or hostile opinions, which is why it stores scores and reason codes, not accusations. The guard uses the plain on-chain average, so many wallets could still sway it.
+- AI output can be wrong. It is limited to numbered evidence and checked for citations, but it is a reading aid, never a verdict.
+- The free Envio token covers HyperSync but not HyperRPC, so block data comes through HyperSync queries.
+- Not audited. Do not use it with real funds. Not affiliated with Monad Labs.
 
 ## Credits and license
 
