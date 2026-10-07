@@ -147,7 +147,7 @@ export function assessWalletRisk(data: WalletData): WalletRiskAssessment {
     riskFactors.push({
       title: 'Single Counterparty Dependency',
       description:
-        'All activity goes to or from a single address. This can be a funnel setup, but it is just as common for bots, payout and system accounts.',
+        'All activity goes to or from a single address. This can mean funds are being passed through one account, but it is just as common for bots, payout and system accounts.',
       severity: 'high',
     });
   }
@@ -165,7 +165,7 @@ export function assessWalletRisk(data: WalletData): WalletRiskAssessment {
     riskFactors.push({
       title: 'One-Way Outflow Pattern',
       description:
-        'Recent transactions are all outgoing, with no incoming funds. This can be a draining pattern, but also a bot or payout account.',
+        'Recent transactions are all outgoing, with no incoming funds. Funds only leave this wallet. That can be a one-way pattern worth a closer look, but it is also typical of a bot or payout account.',
       severity: 'high',
     });
   }
@@ -174,7 +174,7 @@ export function assessWalletRisk(data: WalletData): WalletRiskAssessment {
     score += 10;
     riskFactors.push({
       title: 'Large Token Portfolio',
-      description: `${data.tokenCount} different tokens held. Very large portfolios can indicate a spam token receiver or airdrop farmer.`,
+      description: `${data.tokenCount} different tokens held. Very large portfolios often belong to wallets that receive many unsolicited tokens or join many token distributions.`,
       severity: 'low',
     });
   }

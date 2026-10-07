@@ -4993,12 +4993,6 @@ var Interface = class _Interface {
 
 // src/lib/registryConfig.ts
 var REGISTRY_ADDRESS = "0xb0C3Be753788a5962DE52db929f49df02700AFd4";
-var REGISTRY_ABI = [
-  "function report(address subject, uint8 score, uint8 reasonCode)",
-  "function retract(address subject)",
-  "function getSummary(address subject) view returns (uint32 reporterCount, uint8 averageScore, uint64 lastReportedAt)",
-  "function getSignal(address subject, address reporter) view returns (uint8 score, uint8 reasonCode, uint64 reportedAt)"
-];
 var REASON_LABELS = [
   "Other",
   "Very new wallet",
@@ -5033,6 +5027,14 @@ function pickReasonCode(factors) {
   }
   return best.code;
 }
+
+// src/lib/registryAbi.ts
+var REGISTRY_ABI = [
+  "function report(address subject, uint8 score, uint8 reasonCode)",
+  "function retract(address subject)",
+  "function getSummary(address subject) view returns (uint32 reporterCount, uint8 averageScore, uint64 lastReportedAt)",
+  "function getSignal(address subject, address reporter) view returns (uint8 score, uint8 reasonCode, uint64 reportedAt)"
+];
 
 // server/monad.ts
 var CHAIN_ID = 10143;
@@ -5223,7 +5225,7 @@ function assessTxRisk(data) {
     score += 40;
     riskFactors.push({
       title: "Failed Transaction",
-      description: "This transaction was reverted or failed. Failed transactions can indicate a failed exploit attempt, a front-run, or a contract error during a suspicious interaction.",
+      description: "This transaction was reverted or failed. Failed transactions can come from a contract error, a lost race with another transaction, or an attempt that did not work.",
       severity: "high",
       weight: 40
     });
@@ -5268,7 +5270,7 @@ function assessTxRisk(data) {
       score += 20;
       riskFactors.push({
         title: "Large Native Transfer",
-        description: `This transaction transfers ${ethValue.toLocaleString(void 0, { maximumFractionDigits: 2 })} MON (native token). Large value transfers carry higher financial risk if the transaction is malicious.`,
+        description: `This transaction transfers ${ethValue.toLocaleString(void 0, { maximumFractionDigits: 2 })} MON (native token). Large value transfers carry more financial risk if the counterparty turns out to be unreliable.`,
         severity: "medium",
         weight: 20
       });
@@ -5305,7 +5307,7 @@ function assessTxRisk(data) {
     score += 15;
     riskFactors.push({
       title: "High Number of Token Transfers",
-      description: `${data.tokenTransfers.length} token transfers in a single transaction. A large number of transfers may indicate a batching/distribution pattern, which is sometimes used in phishing or airdrop scams.`,
+      description: `${data.tokenTransfers.length} token transfers in a single transaction. A large number of transfers may indicate a batching/distribution pattern, which is common for payouts and token distributions, and occasionally misused for fraudulent ones.`,
       severity: "medium",
       weight: 15
     });
@@ -5314,7 +5316,7 @@ function assessTxRisk(data) {
     score += 15;
     riskFactors.push({
       title: "Complex Internal Call Structure",
-      description: `${data.internalTxs.length} internal transactions detected. High internal call complexity can obscure fund flows and is sometimes used to hide malicious behavior within nested contract calls.`,
+      description: `${data.internalTxs.length} internal transactions detected. High internal call complexity can make fund flows harder to follow, and is sometimes used to hide unwanted behavior within nested contract calls.`,
       severity: "medium",
       weight: 15
     });
@@ -5347,7 +5349,7 @@ function assessTxRisk(data) {
       score += 15;
       riskFactors.push({
         title: "One-Way Token Distribution",
-        description: `${data.tokenTransfers.length} token transfers all flow outward from the sender to different recipients. This distribution pattern can be associated with phishing payouts or token dispersal schemes.`,
+        description: `${data.tokenTransfers.length} token transfers all flow outward from the sender to different recipients. This distribution pattern is common for payouts and rewards, and occasionally misused for fraudulent distributions.`,
         severity: "medium",
         weight: 15
       });
@@ -5475,7 +5477,7 @@ function assessWalletRisk(data) {
     score += 20;
     riskFactors.push({
       title: "Single Counterparty Dependency",
-      description: "All activity goes to or from a single address. This can be a funnel setup, but it is just as common for bots, payout and system accounts.",
+      description: "All activity goes to or from a single address. This can mean funds are being passed through one account, but it is just as common for bots, payout and system accounts.",
       severity: "high"
     });
   }
@@ -5491,7 +5493,7 @@ function assessWalletRisk(data) {
     score += 15;
     riskFactors.push({
       title: "One-Way Outflow Pattern",
-      description: "Recent transactions are all outgoing, with no incoming funds. This can be a draining pattern, but also a bot or payout account.",
+      description: "Recent transactions are all outgoing, with no incoming funds. Funds only leave this wallet. That can be a one-way pattern worth a closer look, but it is also typical of a bot or payout account.",
       severity: "high"
     });
   }
@@ -5499,7 +5501,7 @@ function assessWalletRisk(data) {
     score += 10;
     riskFactors.push({
       title: "Large Token Portfolio",
-      description: `${data.tokenCount} different tokens held. Very large portfolios can indicate a spam token receiver or airdrop farmer.`,
+      description: `${data.tokenCount} different tokens held. Very large portfolios often belong to wallets that receive many unsolicited tokens or join many token distributions.`,
       severity: "low"
     });
   }
@@ -5629,7 +5631,7 @@ function explainWalletRisk(data, assessment) {
     }
     if (data.contractInteractions.length === 1 && data.txCount > 10) {
       interpretation.push(
-        `All ${data.txCount} transactions involve a single counterparty address. While this could be a legitimate relationship (e.g., a known exchange or service), this pattern is also seen in funnel schemes where funds are routed through a single controlled address.`
+        `All ${data.txCount} transactions involve a single counterparty address. While this could be a legitimate relationship (e.g., a known exchange or service), this pattern is also seen when funds are routed through one controlled address.`
       );
     }
   }
@@ -5733,12 +5735,12 @@ function explainTxRisk(data, assessment) {
     }
     if (data.tokenTransfers.length > 10) {
       interpretation.push(
-        `The high number of token transfers (${data.tokenTransfers.length}) in a single transaction is a detected on-chain fact. This pattern can be legitimate (e.g., a batch distribution or airdrop) but is also used in phishing payouts. The interpretation depends on context that the on-chain data alone cannot fully establish.`
+        `The high number of token transfers (${data.tokenTransfers.length}) in a single transaction is a detected on-chain fact. This pattern can be legitimate (e.g., a batch payout or token distribution) but is occasionally misused for fraudulent distributions. The interpretation depends on context that the on-chain data alone cannot fully establish.`
       );
     }
     if (data.internalTxs.length > 5) {
       interpretation.push(
-        `The ${data.internalTxs.length} internal calls create a complex execution trace. This is a detected fact. Complex internal call structures can obscure fund flows and are sometimes used to hide malicious behavior, but they also occur in legitimate DeFi composability.`
+        `The ${data.internalTxs.length} internal calls create a complex execution trace. This is a detected fact. Complex internal call structures can make fund flows harder to follow and are sometimes used to hide unwanted behavior, but they also occur in legitimate DeFi composability.`
       );
     }
   }
@@ -5817,6 +5819,7 @@ async function buildWalletReport(address, apiKey) {
     },
     summary: explanation.summary,
     recommendation: explanation.recommendation,
+    explanation,
     notice: NOTICE
   };
 }
@@ -5844,6 +5847,7 @@ async function buildTxReport(hash, apiKey) {
     },
     summary: explanation.summary,
     recommendation: explanation.recommendation,
+    explanation,
     notice: NOTICE
   };
 }

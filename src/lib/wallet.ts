@@ -1,7 +1,9 @@
-// Browser wallet access (MetaMask or any EIP-1193 wallet). Nothing is requested until
-// the user clicks a button, and nothing is ever sent without the wallet's own approval.
+// Browser wallet access (any EIP-1193 wallet). This module is loaded only when the visitor
+// clicks a wallet button, so the page itself makes no wallet requests. Nothing is ever
+// sent without the wallet's own approval.
 import { BrowserProvider, Contract } from 'ethers';
-import { MONAD_TESTNET, REGISTRY_ABI, REGISTRY_ADDRESS } from './registryConfig';
+import { MONAD_TESTNET, REGISTRY_ADDRESS } from './registryConfig';
+import { REGISTRY_ABI } from './registryAbi';
 
 interface Eip1193 {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
@@ -18,7 +20,7 @@ declare global {
 export const hasWallet = () => typeof window !== 'undefined' && !!window.ethereum;
 
 function provider(): Eip1193 {
-  if (!window.ethereum) throw new Error('No wallet found. Install MetaMask to record a signal.');
+  if (!window.ethereum) throw new Error('No browser wallet found. Scanning works without one; recording a signal needs a wallet.');
   return window.ethereum;
 }
 
@@ -70,6 +72,15 @@ export async function sendRetract(subject: string) {
   await ensureMonadTestnet();
   const tx = await (await registry()).retract(subject);
   return { hash: tx.hash as string, confirmed: tx.wait() as Promise<unknown> };
+}
+
+/** Follow account switches made inside the wallet. Returns an unsubscribe function. */
+export function watchAccounts(onChange: (account: string) => void): () => void {
+  const eth = window.ethereum;
+  if (!eth?.on) return () => {};
+  const handler = (accounts: unknown) => onChange(Array.isArray(accounts) && accounts[0] ? String(accounts[0]) : '');
+  eth.on('accountsChanged', handler);
+  return () => eth.removeListener?.('accountsChanged', handler);
 }
 
 export function friendlyWalletError(e: unknown): string {

@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ExternalLink, Link2, Loader2, Undo2 } from 'lucide-react';
 import { MONAD_TESTNET, REASON_LABELS, REGISTRY_ADDRESS, explorerAddressUrl, explorerTxUrl } from '@/lib/registryConfig';
-import { connectWallet, friendlyWalletError, hasWallet, sendReport, sendRetract } from '@/lib/wallet';
+
+// The wallet code (and the ethers library) is loaded only when a visitor clicks a wallet
+// button. Reading signals below needs no wallet at all.
+const loadWallet = () => import('@/lib/wallet');
 
 interface View {
   reporterCount: number;
@@ -16,12 +19,15 @@ interface Props {
   reasonCode: number;
 }
 
+type Sent = { hash: string; confirmed: Promise<unknown> };
+
 export default function RegistryPanel({ subject, score, reasonCode }: Props) {
   const [view, setView] = useState<View | null>(null);
   const [loadError, setLoadError] = useState('');
   const [account, setAccount] = useState('');
   const [busy, setBusy] = useState('');
   const [notice, setNotice] = useState<{ kind: 'ok' | 'error'; text: string; hash?: string } | null>(null);
+  const walletPresent = typeof window !== 'undefined' && !!window.ethereum;
 
   const load = useCallback(async () => {
     setLoadError('');
@@ -43,26 +49,32 @@ export default function RegistryPanel({ subject, score, reasonCode }: Props) {
     void load();
   }, [load]);
 
-  // Follow account switches made inside the wallet.
+  // After connecting, follow account switches made inside the wallet.
   useEffect(() => {
-    const eth = window.ethereum;
-    if (!eth?.on) return;
-    const onAccounts = (accounts: unknown) => setAccount(Array.isArray(accounts) && accounts[0] ? String(accounts[0]) : '');
-    eth.on('accountsChanged', onAccounts);
-    return () => eth.removeListener?.('accountsChanged', onAccounts);
-  }, []);
+    if (!account) return;
+    let stop = () => {};
+    let cancelled = false;
+    void loadWallet().then((w) => {
+      if (!cancelled) stop = w.watchAccounts(setAccount);
+    });
+    return () => {
+      cancelled = true;
+      stop();
+    };
+  }, [account]);
 
-  async function run(label: string, action: () => Promise<{ hash: string; confirmed: Promise<unknown> }>) {
+  async function run(label: string, action: (w: Awaited<ReturnType<typeof loadWallet>>) => Promise<Sent>) {
     setBusy(label);
     setNotice(null);
+    const w = await loadWallet();
     try {
-      const { hash, confirmed } = await action();
+      const { hash, confirmed } = await action(w);
       setNotice({ kind: 'ok', text: 'Sent. Waiting for confirmation on Monad…', hash });
       await confirmed;
       setNotice({ kind: 'ok', text: 'Confirmed on Monad Testnet.', hash });
       await load();
     } catch (e) {
-      setNotice({ kind: 'error', text: friendlyWalletError(e) });
+      setNotice({ kind: 'error', text: w.friendlyWalletError(e) });
     } finally {
       setBusy('');
     }
@@ -71,10 +83,11 @@ export default function RegistryPanel({ subject, score, reasonCode }: Props) {
   async function connect() {
     setBusy('connect');
     setNotice(null);
+    const w = await loadWallet();
     try {
-      setAccount(await connectWallet());
+      setAccount(await w.connectWallet());
     } catch (e) {
-      setNotice({ kind: 'error', text: friendlyWalletError(e) });
+      setNotice({ kind: 'error', text: w.friendlyWalletError(e) });
     } finally {
       setBusy('');
     }
@@ -90,7 +103,7 @@ export default function RegistryPanel({ subject, score, reasonCode }: Props) {
       </div>
       <p className="text-xs text-slate-500">
         A public notice board on {MONAD_TESTNET.name}. Anyone can record how they scored an address. It shows opinions, not proof, and
-        not a verdict.
+        not a verdict. Reading it needs no wallet.
       </p>
 
       <div className="mt-4 grid grid-cols-3 gap-3 text-center">
@@ -111,21 +124,21 @@ export default function RegistryPanel({ subject, score, reasonCode }: Props) {
       )}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        {!hasWallet() ? (
-          <p className="text-sm text-amber-300">Install a wallet such as MetaMask to record your own signal.</p>
+        {!walletPresent ? (
+          <p className="text-sm text-slate-500">Optional: with a browser wallet you could record your own signal here.</p>
         ) : !account ? (
           <button
             onClick={connect}
             disabled={!!busy}
             className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50"
           >
-            {busy === 'connect' && <Loader2 className="animate-spin" size={14} />} Connect wallet
+            {busy === 'connect' && <Loader2 className="animate-spin" size={14} />} Connect wallet to record a signal
           </button>
         ) : (
           <>
             <span className="rounded-md bg-slate-800 px-2 py-1 font-mono text-xs text-slate-400">{short(account)}</span>
             <button
-              onClick={() => run('report', () => sendReport(subject, score, reasonCode))}
+              onClick={() => run('report', (w) => w.sendReport(subject, score, reasonCode))}
               disabled={!!busy || isSelf}
               title={isSelf ? 'You cannot record a signal about your own wallet.' : undefined}
               className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
@@ -135,7 +148,7 @@ export default function RegistryPanel({ subject, score, reasonCode }: Props) {
             </button>
             {view?.mine && (
               <button
-                onClick={() => run('retract', () => sendRetract(subject))}
+                onClick={() => run('retract', (w) => w.sendRetract(subject))}
                 disabled={!!busy}
                 className="flex items-center gap-2 rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 disabled:opacity-50"
               >
@@ -163,7 +176,7 @@ export default function RegistryPanel({ subject, score, reasonCode }: Props) {
         <a className="underline" href={explorerAddressUrl(REGISTRY_ADDRESS)} target="_blank" rel="noreferrer">
           {short(REGISTRY_ADDRESS)}
         </a>
-        . You pay a tiny testnet fee, and you can retract your own signal at any time.
+        . Recording costs a tiny testnet fee, and you can retract your own signal at any time.
       </p>
     </div>
   );

@@ -74,7 +74,7 @@ export function assessTxRisk(data: TxData): TxRiskAssessment {
     riskFactors.push({
       title: 'Failed Transaction',
       description:
-        'This transaction was reverted or failed. Failed transactions can indicate a failed exploit attempt, a front-run, or a contract error during a suspicious interaction.',
+        'This transaction was reverted or failed. Failed transactions can come from a contract error, a lost race with another transaction, or an attempt that did not work.',
       severity: 'high',
       weight: 40,
     });
@@ -125,7 +125,7 @@ export function assessTxRisk(data: TxData): TxRiskAssessment {
       score += 20;
       riskFactors.push({
         title: 'Large Native Transfer',
-        description: `This transaction transfers ${ethValue.toLocaleString(undefined, { maximumFractionDigits: 2 })} MON (native token). Large value transfers carry higher financial risk if the transaction is malicious.`,
+        description: `This transaction transfers ${ethValue.toLocaleString(undefined, { maximumFractionDigits: 2 })} MON (native token). Large value transfers carry more financial risk if the counterparty turns out to be unreliable.`,
         severity: 'medium',
         weight: 20,
       });
@@ -164,7 +164,7 @@ export function assessTxRisk(data: TxData): TxRiskAssessment {
     score += 15;
     riskFactors.push({
       title: 'High Number of Token Transfers',
-      description: `${data.tokenTransfers.length} token transfers in a single transaction. A large number of transfers may indicate a batching/distribution pattern, which is sometimes used in phishing or airdrop scams.`,
+      description: `${data.tokenTransfers.length} token transfers in a single transaction. A large number of transfers may indicate a batching/distribution pattern, which is common for payouts and token distributions, and occasionally misused for fraudulent ones.`,
       severity: 'medium',
       weight: 15,
     });
@@ -174,7 +174,7 @@ export function assessTxRisk(data: TxData): TxRiskAssessment {
     score += 15;
     riskFactors.push({
       title: 'Complex Internal Call Structure',
-      description: `${data.internalTxs.length} internal transactions detected. High internal call complexity can obscure fund flows and is sometimes used to hide malicious behavior within nested contract calls.`,
+      description: `${data.internalTxs.length} internal transactions detected. High internal call complexity can make fund flows harder to follow, and is sometimes used to hide unwanted behavior within nested contract calls.`,
       severity: 'medium',
       weight: 15,
     });
@@ -216,7 +216,7 @@ export function assessTxRisk(data: TxData): TxRiskAssessment {
       score += 15;
       riskFactors.push({
         title: 'One-Way Token Distribution',
-        description: `${data.tokenTransfers.length} token transfers all flow outward from the sender to different recipients. This distribution pattern can be associated with phishing payouts or token dispersal schemes.`,
+        description: `${data.tokenTransfers.length} token transfers all flow outward from the sender to different recipients. This distribution pattern is common for payouts and rewards, and occasionally misused for fraudulent distributions.`,
         severity: 'medium',
         weight: 15,
       });

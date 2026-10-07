@@ -2,7 +2,7 @@
 // analyst) consume. Everything here is derived from public Monad Testnet data.
 import { assessTxRisk } from '../src/lib/txRisk.ts';
 import { assessWalletRisk } from '../src/lib/walletRisk.ts';
-import { explainTxRisk, explainWalletRisk } from '../src/lib/riskExplainer.ts';
+import { explainTxRisk, explainWalletRisk, type RiskExplanation } from '../src/lib/riskExplainer.ts';
 import { REASON_LABELS, pickReasonCode } from '../src/lib/registryConfig.ts';
 import { fetchTxData, fetchWalletData, CHAIN_ID, NETWORK } from './monad.ts';
 import { cleanText, isoFromUnix, weiToMon } from './safe.ts';
@@ -30,6 +30,7 @@ export interface WalletReport {
   };
   summary: string;
   recommendation: string;
+  explanation: RiskExplanation;
   notice: string;
 }
 
@@ -66,6 +67,7 @@ export async function buildWalletReport(address: string, apiKey: string): Promis
     },
     summary: explanation.summary,
     recommendation: explanation.recommendation,
+    explanation,
     notice: NOTICE,
   };
 }
@@ -79,6 +81,7 @@ export interface TxReport {
   facts: Record<string, string | number | boolean | null | undefined>;
   summary: string;
   recommendation: string;
+  explanation: RiskExplanation;
   notice: string;
 }
 
@@ -106,6 +109,7 @@ export async function buildTxReport(hash: string, apiKey: string): Promise<TxRep
     },
     summary: explanation.summary,
     recommendation: explanation.recommendation,
+    explanation,
     notice: NOTICE,
   };
 }

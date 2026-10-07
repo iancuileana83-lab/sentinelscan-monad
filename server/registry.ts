@@ -1,6 +1,7 @@
 // Read-only view of RiskRegistry, done on the server so the browser needs no RPC access.
 import { Interface } from 'ethers';
-import { REGISTRY_ABI, REGISTRY_ADDRESS } from '../src/lib/registryConfig.ts';
+import { REGISTRY_ADDRESS } from '../src/lib/registryConfig.ts';
+import { REGISTRY_ABI } from '../src/lib/registryAbi.ts';
 import { rpc } from './monad.ts';
 
 const iface = new Interface(REGISTRY_ABI);

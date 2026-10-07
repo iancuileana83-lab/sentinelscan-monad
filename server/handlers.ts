@@ -1,6 +1,7 @@
 // Shared by the Vercel functions in /api and by the dev server in vite.config.ts.
-import { fetchTxData, fetchWalletData } from './monad.ts';
+import { buildTxReport, buildWalletReport } from './reports.ts';
 import { readRegistry } from './registry.ts';
+import { txView, walletView } from './views.ts';
 
 export interface HandlerResult {
   status: number;
@@ -20,10 +21,10 @@ export async function walletScan(address: unknown, apiKey: string | undefined): 
   }
   if (!apiKey) return fail(500, 'Server is missing its explorer key (ETHERSCAN_API_KEY).');
   try {
-    const data = await fetchWalletData(address.trim(), apiKey);
-    const warning =
-      data.txCount === 0 && data.tokens.length === 0 ? 'No on-chain activity found for this address on Monad Testnet.' : undefined;
-    return { status: 200, body: { data, warning } };
+    const report = await buildWalletReport(address.trim(), apiKey);
+    const empty = report.facts.transactionsAnalyzed === 0 && report.evidence.tokens.length === 0;
+    const warning = empty ? 'No on-chain activity found for this address on Monad Testnet.' : undefined;
+    return { status: 200, body: { data: walletView(report), warning } };
   } catch (e) {
     return fail(502, e instanceof Error ? e.message : 'Unknown server error');
   }
@@ -47,7 +48,7 @@ export async function txScan(txHash: unknown, apiKey: string | undefined): Promi
   }
   if (!apiKey) return fail(500, 'Server is missing its explorer key (ETHERSCAN_API_KEY).');
   try {
-    return { status: 200, body: { data: await fetchTxData(txHash.trim(), apiKey) } };
+    return { status: 200, body: { data: txView(await buildTxReport(txHash.trim(), apiKey)) } };
   } catch (e) {
     return fail(502, e instanceof Error ? e.message : 'Unknown server error');
   }

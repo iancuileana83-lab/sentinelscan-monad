@@ -126,7 +126,7 @@ export function explainWalletRisk(
       data.txCount > 10
     ) {
       interpretation.push(
-        `All ${data.txCount} transactions involve a single counterparty address. While this could be a legitimate relationship (e.g., a known exchange or service), this pattern is also seen in funnel schemes where funds are routed through a single controlled address.`
+        `All ${data.txCount} transactions involve a single counterparty address. While this could be a legitimate relationship (e.g., a known exchange or service), this pattern is also seen when funds are routed through one controlled address.`
       );
     }
   }
@@ -258,13 +258,13 @@ export function explainTxRisk(
 
     if (data.tokenTransfers.length > 10) {
       interpretation.push(
-        `The high number of token transfers (${data.tokenTransfers.length}) in a single transaction is a detected on-chain fact. This pattern can be legitimate (e.g., a batch distribution or airdrop) but is also used in phishing payouts. The interpretation depends on context that the on-chain data alone cannot fully establish.`
+        `The high number of token transfers (${data.tokenTransfers.length}) in a single transaction is a detected on-chain fact. This pattern can be legitimate (e.g., a batch payout or token distribution) but is occasionally misused for fraudulent distributions. The interpretation depends on context that the on-chain data alone cannot fully establish.`
       );
     }
 
     if (data.internalTxs.length > 5) {
       interpretation.push(
-        `The ${data.internalTxs.length} internal calls create a complex execution trace. This is a detected fact. Complex internal call structures can obscure fund flows and are sometimes used to hide malicious behavior, but they also occur in legitimate DeFi composability.`
+        `The ${data.internalTxs.length} internal calls create a complex execution trace. This is a detected fact. Complex internal call structures can make fund flows harder to follow and are sometimes used to hide unwanted behavior, but they also occur in legitimate DeFi composability.`
       );
     }
   }

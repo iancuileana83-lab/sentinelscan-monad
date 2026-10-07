@@ -2,13 +2,6 @@
 // The address must match deployments/monad-testnet.json (checked by a test).
 export const REGISTRY_ADDRESS = '0xb0C3Be753788a5962DE52db929f49df02700AFd4';
 
-export const REGISTRY_ABI = [
-  'function report(address subject, uint8 score, uint8 reasonCode)',
-  'function retract(address subject)',
-  'function getSummary(address subject) view returns (uint32 reporterCount, uint8 averageScore, uint64 lastReportedAt)',
-  'function getSignal(address subject, address reporter) view returns (uint8 score, uint8 reasonCode, uint64 reportedAt)',
-] as const;
-
 export const MONAD_TESTNET = {
   chainId: 10143,
   chainIdHex: '0x279f',

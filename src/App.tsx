@@ -3,109 +3,56 @@ import { AlertCircle, ArrowRight, Loader2, Search, ShieldCheck, Wallet } from 'l
 import RiskGauge from '@/components/RiskGauge';
 import RiskExplainer from '@/components/RiskExplainer';
 import RegistryPanel from '@/components/RegistryPanel';
-import { pickReasonCode } from '@/lib/registryConfig';
-import { assessWalletRisk, type WalletData, type WalletRiskAssessment } from '@/lib/walletRisk';
-import { assessTxRisk, type TxData, type TxRiskAssessment } from '@/lib/txRisk';
-import { explainTxRisk, explainWalletRisk, type RiskExplanation } from '@/lib/riskExplainer';
+import type { ScanSignal, ScanView } from '@/lib/viewTypes';
 
 type Mode = 'wallet' | 'transaction';
 
-interface Factor {
-  title: string;
-  description: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
-}
+const EXAMPLES: Record<Mode, { label: string; note: string; value: string }[]> = {
+  wallet: [
+    { label: 'System account', note: 'pays staking rewards, so a pure outflow pattern', value: '0x6f49a8f621353f12378d0046e7d7e4b9b249dc9e' },
+    { label: 'Fresh test wallet', note: 'a new wallet with a few transactions', value: '0x0c6b75389A0d48F2eb16Cc91022728fb6CBE7FC5' },
+    { label: 'RiskRegistry contract', note: 'the public contract behind this app', value: '0xb0C3Be753788a5962DE52db929f49df02700AFd4' },
+  ],
+  transaction: [
+    { label: 'Reward transfer', note: 'a system transfer of 18 MON', value: '0x5457906afbd449d0334b9e7f0a7ad4ea95c46f5c8dd9bca4aef1cdef262fefa2' },
+    { label: 'Contract deployment', note: 'the transaction that created RiskRegistry', value: '0x2d86c87d9c08bef92e2beaee42c24bab5b90e3dc2dd606240e644ca5f644113c' },
+  ],
+};
 
-interface Result {
-  mode: Mode;
-  target: string;
-  score: number;
-  level: 'safe' | 'caution' | 'danger';
-  factors: Factor[];
-  explanation: RiskExplanation;
-  facts: { label: string; value: string }[];
-  warning?: string;
-  reasonCode?: number;
-}
-
-const severityStyle: Record<Factor['severity'], string> = {
+const severityStyle: Record<ScanSignal['severity'], string> = {
   low: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
   medium: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
   high: 'border-orange-500/30 bg-orange-500/10 text-orange-300',
   critical: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
 };
 
-function fromWei(wei: string): string {
-  const mon = Number(BigInt(wei || '0')) / 1e18;
-  return `${mon.toLocaleString(undefined, { maximumFractionDigits: 4 })} MON`;
-}
-
-async function callApi<T>(path: string): Promise<{ data: T; warning?: string }> {
-  const res = await fetch(path);
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
-  return body;
-}
-
 export default function App() {
   const [mode, setMode] = useState<Mode>('wallet');
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [result, setResult] = useState<Result | null>(null);
+  const [result, setResult] = useState<{ view: ScanView; warning?: string } | null>(null);
 
-  async function scan() {
-    const value = input.trim();
-    if (!value) return;
+  async function scan(value = input) {
+    const target = value.trim();
+    if (!target) return;
     setLoading(true);
     setError('');
     setResult(null);
     try {
-      if (mode === 'wallet') {
-        const { data, warning } = await callApi<WalletData & { balanceWei: string }>(
-          `/api/wallet-scan?address=${encodeURIComponent(value)}`
-        );
-        const a: WalletRiskAssessment = assessWalletRisk(data);
-        setResult({
-          mode,
-          target: data.address,
-          score: a.score,
-          level: a.level,
-          factors: a.riskFactors,
-          explanation: explainWalletRisk(data, a),
-          warning,
-          reasonCode: pickReasonCode(a.riskFactors),
-          facts: [
-            { label: 'Balance', value: fromWei(data.balanceWei) },
-            { label: 'Transactions (latest 100)', value: String(data.txCount) },
-            { label: 'Tokens seen', value: String(data.tokenCount) },
-            { label: 'First seen', value: data.firstSeen ? new Date(data.firstSeen).toLocaleDateString() : 'n/a' },
-          ],
-        });
-      } else {
-        const { data } = await callApi<TxData>(`/api/tx-scan?hash=${encodeURIComponent(value)}`);
-        const a: TxRiskAssessment = assessTxRisk(data);
-        setResult({
-          mode,
-          target: data.hash,
-          score: a.score,
-          level: a.level,
-          factors: a.riskFactors,
-          explanation: explainTxRisk(data, a),
-          facts: [
-            { label: 'Status', value: data.isSuccess ? 'Success' : 'Failed' },
-            { label: 'Value', value: fromWei(data.value) },
-            { label: 'Block', value: String(data.blockNumber) },
-            { label: 'Token transfers', value: String(data.tokenTransfers.length) },
-          ],
-        });
-      }
+      const path = mode === 'wallet' ? `/api/wallet-scan?address=${encodeURIComponent(target)}` : `/api/tx-scan?hash=${encodeURIComponent(target)}`;
+      const res = await fetch(path);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
+      setResult({ view: body.data, warning: body.warning });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong.');
     } finally {
       setLoading(false);
     }
   }
+
+  const view = result?.view;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200">
@@ -120,6 +67,11 @@ export default function App() {
       </header>
 
       <main className="mx-auto max-w-3xl space-y-6 px-4 py-8">
+        <p className="text-sm leading-relaxed text-slate-400">
+          Paste a wallet address or transaction hash from Monad Testnet to see a 0 to 100 signal, the reasons behind it and the on-chain
+          evidence. No sign-in, no wallet needed. The scores are signals, not verdicts.
+        </p>
+
         <div className="flex gap-2">
           {(['wallet', 'transaction'] as Mode[]).map((m) => (
             <button
@@ -130,7 +82,7 @@ export default function App() {
                 setResult(null);
                 setError('');
               }}
-              className={`rounded-lg border px-4 py-2 text-sm font-medium capitalize transition ${
+              className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
                 mode === m
                   ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
                   : 'border-slate-700 text-slate-400 hover:bg-slate-800'
@@ -169,6 +121,27 @@ export default function App() {
           </button>
         </form>
 
+        <div className="space-y-1.5">
+          <div className="text-xs text-slate-500">Try an example:</div>
+          <div className="flex flex-wrap gap-2">
+            {EXAMPLES[mode].map((ex) => (
+              <button
+                key={ex.value}
+                title={ex.note}
+                aria-label={ex.label}
+                disabled={loading}
+                onClick={() => {
+                  setInput(ex.value);
+                  void scan(ex.value);
+                }}
+                className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 transition hover:bg-slate-800 disabled:opacity-50"
+              >
+                {ex.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {error && (
           <div role="alert" className="flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300">
             <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
@@ -176,19 +149,19 @@ export default function App() {
           </div>
         )}
 
-        {result && (
+        {view && (
           <section className="space-y-5">
             <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5">
               <div className="mb-1 flex items-center gap-2 text-xs uppercase tracking-wide text-slate-500">
-                <Wallet size={14} /> {result.mode}
+                <Wallet size={14} /> {view.kind}
               </div>
-              <p className="break-all font-mono text-sm text-slate-300">{result.target}</p>
-              {result.warning && <p className="mt-2 text-sm text-amber-300">{result.warning}</p>}
+              <p className="break-all font-mono text-sm text-slate-300">{view.target}</p>
+              {result?.warning && <p className="mt-2 text-sm text-amber-300">{result.warning}</p>}
               <div className="mt-4 flex justify-center">
-                <RiskGauge score={result.score} level={result.level} />
+                <RiskGauge score={view.score} level={view.level} />
               </div>
               <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {result.facts.map((f) => (
+                {view.facts.map((f) => (
                   <div key={f.label} className="rounded-lg bg-slate-800/50 p-3">
                     <dt className="text-xs text-slate-500">{f.label}</dt>
                     <dd className="mt-0.5 text-sm font-medium text-slate-200">{f.value}</dd>
@@ -199,7 +172,7 @@ export default function App() {
 
             <div className="space-y-2">
               <h2 className="text-sm font-semibold text-slate-100">Signals found</h2>
-              {result.factors.map((f) => (
+              {view.signals.map((f) => (
                 <div key={f.title} className={`rounded-lg border p-3 ${severityStyle[f.severity]}`}>
                   <div className="text-sm font-medium">{f.title}</div>
                   <p className="mt-0.5 text-sm text-slate-300">{f.description}</p>
@@ -207,17 +180,19 @@ export default function App() {
               ))}
             </div>
 
-            {result.mode === 'wallet' && (
-              <RegistryPanel subject={result.target} score={result.score} reasonCode={result.reasonCode ?? 0} />
-            )}
+            {view.kind === 'wallet' && <RegistryPanel subject={view.target} score={view.score} reasonCode={view.reasonCode ?? 0} />}
 
-            <RiskExplainer explanation={result.explanation} type={result.mode} />
+            <RiskExplainer explanation={view.explanation} type={view.kind} />
           </section>
         )}
 
         <p className="pt-4 text-xs leading-relaxed text-slate-600">
-          Scores describe the likelihood of risky patterns in public on-chain data. They are signals, not verdicts, and not
-          financial advice. Monad Testnet tokens have no real value.
+          Scores describe the likelihood of unusual patterns in public on-chain data. They are signals, not verdicts, and not financial
+          advice. Monad Testnet tokens have no real value. AI agents can use the same scanner through a read-only API:{' '}
+          <a className="underline" href="https://github.com/iancuileana83-lab/sentinelscan-monad#for-ai-agents-read-only-tools-mcp-and-json">
+            see the README
+          </a>
+          .
         </p>
       </main>
     </div>
