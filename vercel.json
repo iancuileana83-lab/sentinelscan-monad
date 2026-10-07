@@ -1,4 +1,4 @@
 {
   "functions": { "api/*.js": { "maxDuration": 30 } },
-  "rewrites": [{ "source": "/((?!api/|assets/|.*\..*).*)", "destination": "/index.html" }]
+  "rewrites": [{ "source": "/((?!api/|assets/)[^.]*)", "destination": "/index.html" }]
 }
