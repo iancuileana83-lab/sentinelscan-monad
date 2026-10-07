@@ -95,3 +95,35 @@ test('event replay treats addresses case-insensitively', () => {
   const live = applyEvents([ev('recorded', A.toUpperCase().replace('0X', '0x'), 1, 10), ev('retracted', A, 2)]);
   assert.equal(live.length, 0);
 });
+
+import { activityByDay, scoreHistogram } from '../server/registryFeed.ts';
+
+test('activity per day covers the window, zeros included, and counts each kind', () => {
+  const now = Date.UTC(2026, 9, 10, 15, 0, 0);
+  const t = (d: number, h = 12) => Date.UTC(2026, 9, d, h) / 1000;
+  const rows = activityByDay(
+    [
+      { kind: 'recorded', time: t(10) },
+      { kind: 'recorded', time: t(10, 1) },
+      { kind: 'retracted', time: t(9) },
+      { kind: 'recorded', time: t(1) }, // outside a 7-day window
+    ],
+    7,
+    now
+  );
+  assert.equal(rows.length, 7);
+  assert.equal(rows[6].day, '2026-10-10');
+  assert.equal(rows[6].recorded, 2);
+  assert.equal(rows[5].retracted, 1);
+  assert.equal(rows.reduce((a, r) => a + r.recorded + r.retracted, 0), 3);
+});
+
+test('score histogram puts 100 in the last bucket and every score in exactly one', () => {
+  const h = scoreHistogram([0, 9, 10, 65, 99, 100]);
+  assert.equal(h.length, 10);
+  assert.equal(h[0].count, 2);
+  assert.equal(h[1].count, 1);
+  assert.equal(h[6].count, 1);
+  assert.equal(h[9].count, 2);
+  assert.equal(h.reduce((a, b) => a + b.count, 0), 6);
+});

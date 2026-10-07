@@ -1,7 +1,8 @@
-import { ExternalLink } from 'lucide-react';
+import { Activity, BarChart3, ExternalLink, Gauge, Layers, ListChecks, Trophy, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import AddrLink from '@/components/AddrLink';
 import { Card, ErrorNote, Stat } from '@/components/Card';
+import { BarChart, HBars, toneForScore } from '@/components/Charts';
 import Loading from '@/components/Loading';
 import { timeAgo } from '@/lib/format';
 import { REGISTRY_ADDRESS, explorerAddressUrl, explorerTxUrl } from '@/lib/registryConfig';
@@ -20,6 +21,8 @@ export interface FeedEvent {
 interface Overview {
   stats: { liveSignals: number; addressesReported: number; activeReporters: number; totalReports: number; retractions: number; averageScore: number | null };
   scoreBands: { label: string; count: number }[];
+  scoreHistogram: { label: string; count: number }[];
+  activity: { day: string; recorded: number; retracted: number }[];
   reasons: { label: string; count: number }[];
   topReported: { address: string; reporters: number; averageScore: number; lastReportedAt: string }[];
   recent: FeedEvent[];
@@ -28,30 +31,26 @@ interface Overview {
 
 export function EventRow({ e, show = 'both' }: { e: FeedEvent; show?: 'both' | 'subject' | 'reporter' }) {
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-800 py-2.5 text-sm last:border-0">
-      <span
-        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-          e.kind === 'recorded' ? 'bg-emerald-500/10 text-emerald-300' : 'bg-slate-700/60 text-slate-300'
-        }`}
-      >
+    <li className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line py-3 text-sm last:border-0">
+      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${e.kind === 'recorded' ? 'bg-brand/10 text-brand-ink' : 'bg-card2 text-ink2'}`}>
         {e.kind === 'recorded' ? 'Recorded' : 'Retracted'}
       </span>
       {show !== 'reporter' && (
-        <span className="text-slate-400">
+        <span className="text-muted">
           about <AddrLink address={e.subject} />
         </span>
       )}
       {show !== 'subject' && (
-        <span className="text-slate-400">
+        <span className="text-muted">
           by <AddrLink address={e.reporter} to="reporter" />
         </span>
       )}
       {e.kind === 'recorded' && (
-        <span className="text-slate-300">
+        <span className="text-ink2">
           score <b>{e.score}</b> · {e.reasonLabel}
         </span>
       )}
-      <span className="ml-auto flex items-center gap-2 text-xs text-slate-500">
+      <span className="ml-auto flex items-center gap-2 text-xs text-faint">
         {timeAgo(e.time)}
         {e.txHash && (
           <a className="inline-flex items-center gap-1 underline" href={explorerTxUrl(e.txHash)} target="_blank" rel="noreferrer" aria-label="View transaction">
@@ -63,25 +62,6 @@ export function EventRow({ e, show = 'both' }: { e: FeedEvent; show?: 'both' | '
   );
 }
 
-function Bars({ rows }: { rows: { label: string; count: number }[] }) {
-  const max = Math.max(1, ...rows.map((r) => r.count));
-  return (
-    <ul className="space-y-2">
-      {rows.map((r) => (
-        <li key={r.label} className="text-sm">
-          <div className="flex justify-between text-slate-300">
-            <span>{r.label}</span>
-            <span className="text-slate-500">{r.count}</span>
-          </div>
-          <div className="mt-1 h-2 rounded-full bg-slate-800">
-            <div className="h-2 rounded-full bg-emerald-500/70" style={{ width: `${(r.count / max) * 100}%` }} />
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 export default function RegistryPage() {
   const { data, error, loading } = useApi<{ data: Overview }>('/api/registry-feed');
   const o = data?.data;
@@ -89,9 +69,12 @@ export default function RegistryPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-100">Registry Explorer</h1>
-        <p className="mt-1 max-w-2xl text-sm text-slate-400">
-          Everything recorded in the public <a className="text-emerald-400 underline" href={explorerAddressUrl(REGISTRY_ADDRESS)} target="_blank" rel="noreferrer">RiskRegistry</a>{' '}
+        <h1 className="text-2xl font-bold tracking-tight text-ink">Registry Explorer</h1>
+        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted">
+          Everything recorded in the public{' '}
+          <a className="text-brand-ink underline" href={explorerAddressUrl(REGISTRY_ADDRESS)} target="_blank" rel="noreferrer">
+            RiskRegistry
+          </a>{' '}
           contract on Monad Testnet, rebuilt from its on-chain events. These are opinions of anonymous wallets, not verdicts.
         </p>
       </div>
@@ -102,38 +85,53 @@ export default function RegistryPage() {
       {o && (
         <>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Stat label="Live signals" value={o.stats.liveSignals} hint="Signals that have not been retracted" />
-            <Stat label="Addresses reported" value={o.stats.addressesReported} />
-            <Stat label="Active reporters" value={o.stats.activeReporters} />
-            <Stat label="Average score" value={o.stats.averageScore ?? '–'} />
+            <Stat icon={Layers} label="Live signals" value={o.stats.liveSignals} hint="Signals that have not been retracted" />
+            <Stat icon={ListChecks} label="Addresses reported" value={o.stats.addressesReported} />
+            <Stat icon={Users} label="Active reporters" value={o.stats.activeReporters} />
+            <Stat icon={Gauge} label="Average score" value={o.stats.averageScore ?? '–'} />
           </div>
-          <p className="-mt-2 text-xs text-slate-500">
+          <p className="-mt-2 text-xs text-faint">
             {o.stats.totalReports} report(s) recorded in total, {o.stats.retractions} retracted.
             {o.historyTruncated && ' Showing the first 1000 events only.'}
           </p>
 
           {o.stats.liveSignals === 0 ? (
             <Card>
-              <p className="text-sm text-slate-400">
-                No live signals yet. Scan a wallet on the <Link className="text-emerald-400 underline" to="/">Scanner</Link> and record the first one.
+              <p className="text-sm text-muted">
+                No live signals yet. Scan a wallet on the{' '}
+                <Link className="text-brand-ink underline" to="/">
+                  Scanner
+                </Link>{' '}
+                and record the first one.
               </p>
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              <Card title="Score bands (live signals)">
-                <Bars rows={o.scoreBands} />
+              <Card title="Activity, last 14 days" icon={Activity}>
+                <BarChart
+                  title="Signals recorded per day, last 14 days"
+                  bars={o.activity.map((d) => ({ label: d.day.slice(8), value: d.recorded + d.retracted }))}
+                />
+                <p className="mt-2 text-xs text-faint">Recordings and retractions per day (UTC). Day of month shown below each bar.</p>
               </Card>
-              <Card title="Reasons given">
-                <Bars rows={o.reasons} />
+              <Card title="Score distribution" icon={BarChart3}>
+                <BarChart
+                  title="Live signals by score"
+                  bars={o.scoreHistogram.map((b, i) => ({ label: b.label.split('-')[0], value: b.count, tone: toneForScore(i * 10) }))}
+                />
+                <p className="mt-2 text-xs text-faint">Live signals by score band, in steps of ten. Green under 40, amber 40 to 69, red from 70.</p>
+              </Card>
+              <Card title="Reasons given" className="md:col-span-2">
+                <HBars rows={o.reasons} />
               </Card>
             </div>
           )}
 
           {o.topReported.length > 0 && (
-            <Card title="Most-reported addresses">
+            <Card title="Most-reported addresses" icon={Trophy}>
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[420px] text-left text-sm">
-                  <thead className="text-xs text-slate-500">
+                  <thead className="text-xs text-faint">
                     <tr>
                       <th className="pb-2 font-medium">Address</th>
                       <th className="pb-2 font-medium">Reporters</th>
@@ -143,13 +141,13 @@ export default function RegistryPage() {
                   </thead>
                   <tbody>
                     {o.topReported.map((r) => (
-                      <tr key={r.address} className="border-t border-slate-800">
-                        <td className="py-2">
+                      <tr key={r.address} className="border-t border-line">
+                        <td className="py-2.5">
                           <AddrLink address={r.address} />
                         </td>
-                        <td className="py-2">{r.reporters}</td>
-                        <td className="py-2">{r.averageScore}</td>
-                        <td className="py-2 text-slate-500">{timeAgo(r.lastReportedAt)}</td>
+                        <td className="py-2.5 tabular-nums">{r.reporters}</td>
+                        <td className="py-2.5 tabular-nums">{r.averageScore}</td>
+                        <td className="py-2.5 text-faint">{timeAgo(r.lastReportedAt)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -158,9 +156,9 @@ export default function RegistryPage() {
             </Card>
           )}
 
-          <Card title="Recent activity">
+          <Card title="Recent activity" icon={Activity}>
             {o.recent.length === 0 ? (
-              <p className="text-sm text-slate-400">Nothing recorded yet.</p>
+              <p className="text-sm text-muted">Nothing recorded yet.</p>
             ) : (
               <ul>
                 {o.recent.map((e, i) => (

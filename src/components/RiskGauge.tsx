@@ -6,110 +6,66 @@ interface RiskGaugeProps {
   level: RiskLevel;
 }
 
-const levelMeta: Record<
-  RiskLevel,
-  { color: string; glow: string; label: string; text: string }
-> = {
-  safe: {
-    color: '#10b981',
-    glow: 'drop-shadow-[0_0_20px_rgba(16,185,129,0.4)]',
-    label: 'Low Risk',
-    text: 'text-emerald-400',
-  },
-  caution: {
-    color: '#f59e0b',
-    glow: 'drop-shadow-[0_0_20px_rgba(245,158,11,0.4)]',
-    label: 'Caution',
-    text: 'text-amber-400',
-  },
-  danger: {
-    color: '#f43f5e',
-    glow: 'drop-shadow-[0_0_20px_rgba(244,63,94,0.4)]',
-    label: 'High Risk',
-    text: 'text-rose-400',
-  },
+const levelMeta: Record<RiskLevel, { token: string; label: string; text: string; note: string }> = {
+  safe: { token: 'ok', label: 'Low risk', text: 'text-ok', note: 'No strong patterns found' },
+  caution: { token: 'warn', label: 'Caution', text: 'text-warn', note: 'Worth a closer look' },
+  danger: { token: 'bad', label: 'High risk', text: 'text-bad', note: 'Many patterns at once' },
 };
 
+const RADIUS = 70;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+/** A circular gauge that draws itself and counts up. Green, amber and red appear only here and in risk badges. */
 export default function RiskGauge({ score, level }: RiskGaugeProps) {
-  const [animatedScore, setAnimatedScore] = useState(0);
   const meta = levelMeta[level];
+  const [shown, setShown] = useState(0);
 
   useEffect(() => {
-    const duration = 900;
+    const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) {
+      setShown(score);
+      return;
+    }
+    const duration = 1100;
     const start = performance.now();
-    let frame: number;
+    let frame = 0;
     const tick = (now: number) => {
       const t = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setAnimatedScore(Math.round(eased * score));
+      setShown(Math.round((1 - Math.pow(1 - t, 3)) * score));
       if (t < 1) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [score]);
 
-  const radius = 120;
-  const circumference = Math.PI * radius;
-  const progress = animatedScore / 100;
-  const dashOffset = circumference * (1 - progress);
+  const offset = CIRCUMFERENCE * (1 - shown / 100);
+  const color = `rgb(var(--c-${meta.token}))`;
 
   return (
-    <div className="flex flex-col items-center">
-      <svg
-        width="280"
-        height="160"
-        viewBox="0 0 280 160"
-        className={meta.glow}
-      >
-        <defs>
-          <linearGradient id={`grad-${level}`} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor={meta.color} stopOpacity="0.5" />
-            <stop offset="100%" stopColor={meta.color} stopOpacity="1" />
-          </linearGradient>
-        </defs>
-        {/* Track */}
-        <path
-          d={`M 30 140 A ${radius} ${radius} 0 0 1 250 140`}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="16"
-          strokeLinecap="round"
-          className="text-slate-700/60"
-        />
-        {/* Progress */}
-        <path
-          d={`M 30 140 A ${radius} ${radius} 0 0 1 250 140`}
-          fill="none"
-          stroke={`url(#grad-${level})`}
-          strokeWidth="16"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={dashOffset}
-          style={{ transition: 'stroke-dashoffset 0.1s linear' }}
-        />
-        {/* Score text */}
-        <text
-          x="140"
-          y="125"
-          textAnchor="middle"
-          className="fill-slate-100 font-bold"
-          style={{ fontSize: '3rem' }}
-        >
-          {animatedScore}
-        </text>
-        <text
-          x="140"
-          y="148"
-          textAnchor="middle"
-          className="fill-slate-500 font-medium"
-          style={{ fontSize: '0.75rem', letterSpacing: '0.1em' }}
-        >
-          / 100
-        </text>
-      </svg>
-      <div className={`-mt-2 text-lg font-semibold ${meta.text}`}>
-        {meta.label}
+    <div className="flex flex-col items-center" role="img" aria-label={`Risk score ${score} out of 100: ${meta.label}`}>
+      <div className="relative h-44 w-44">
+        <svg viewBox="0 0 180 180" className="h-full w-full -rotate-90">
+          <circle cx="90" cy="90" r={RADIUS} fill="none" strokeWidth="14" stroke="rgb(var(--c-line))" />
+          <circle
+            cx="90"
+            cy="90"
+            r={RADIUS}
+            fill="none"
+            strokeWidth="14"
+            strokeLinecap="round"
+            stroke={color}
+            strokeDasharray={CIRCUMFERENCE}
+            strokeDashoffset={offset}
+            style={{ filter: `drop-shadow(0 0 6px rgb(var(--c-${meta.token}) / 0.45))` }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-5xl font-bold tabular-nums text-ink">{shown}</span>
+          <span className="text-xs font-medium tracking-wide text-faint">out of 100</span>
+        </div>
       </div>
+      <div className={`mt-1 text-lg font-semibold ${meta.text}`}>{meta.label}</div>
+      <div className="text-xs text-faint">{meta.note}</div>
     </div>
   );
 }

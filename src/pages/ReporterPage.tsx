@@ -1,4 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
+import { History, ListChecks, Scale } from 'lucide-react';
 import AddrLink from '@/components/AddrLink';
 import { Card, ErrorNote, Stat } from '@/components/Card';
 import CopyLink from '@/components/CopyLink';
@@ -22,12 +23,12 @@ function Meter({ label, value, detail }: { label: string; value: number; detail:
   const pct = Math.round(value * 100);
   return (
     <div className="text-sm">
-      <div className="flex justify-between gap-3 text-slate-300">
+      <div className="flex justify-between gap-3 text-ink2">
         <span>{label}</span>
-        <span className="text-right text-slate-500">{detail}</span>
+        <span className="text-right text-faint">{detail}</span>
       </div>
-      <div className="mt-1 h-2 rounded-full bg-slate-800" role="meter" aria-label={label} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-        <div className="h-2 rounded-full bg-emerald-500/70" style={{ width: `${pct}%` }} />
+      <div className="mt-1 h-2 rounded-full bg-card2" role="meter" aria-label={label} aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-2 rounded-full bg-brand/70" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -42,8 +43,8 @@ export default function ReporterPage() {
   if (!valid) {
     return (
       <div className="mx-auto max-w-xl space-y-3 py-12 text-center">
-        <h1 className="text-xl font-semibold text-slate-100">Not a valid address</h1>
-        <Link className="text-emerald-400 underline" to="/registry">
+        <h1 className="text-xl font-semibold text-ink">Not a valid address</h1>
+        <Link className="text-brand-ink underline" to="/registry">
           Back to the registry
         </Link>
       </div>
@@ -55,9 +56,9 @@ export default function ReporterPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-slate-100">Reporter</h1>
-          <p className="mt-1 break-all font-mono text-sm text-slate-400">{address}</p>
-          <Link className="mt-1 inline-block text-xs text-emerald-400 underline" to={`/address/${address}`}>
+          <h1 className="text-xl font-semibold text-ink">Reporter</h1>
+          <p className="mt-1 break-all font-mono text-sm text-muted">{address}</p>
+          <Link className="mt-1 inline-block text-xs text-brand-ink underline" to={`/address/${address}`}>
             Scan this wallet as an address
           </Link>
         </div>
@@ -76,18 +77,18 @@ export default function ReporterPage() {
             <Stat label="Live signals" value={r.factors.reportsMade} />
           </div>
 
-          <Card title="How this weight is built">
+          <Card title="How this weight is built" icon={Scale}>
             <div className="space-y-4">
               <Meter label="Age" value={r.factors.age} detail="full credit at 30 days" />
               <Meter label="Activity" value={r.factors.activity} detail="full credit at 50 transactions" />
               <Meter label="Restraint" value={r.factors.restraint} detail="full up to 10 signals" />
             </div>
-            <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-slate-400">
+            <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-muted">
               {r.explanation.map((l) => (
                 <li key={l}>{l}</li>
               ))}
             </ul>
-            <p className="mt-3 text-xs text-slate-500">
+            <p className="mt-3 text-xs text-faint">
               {r.note} The full rule is on{' '}
               <Link className="underline" to="/how-it-works">
                 How it works
@@ -96,18 +97,18 @@ export default function ReporterPage() {
             </p>
           </Card>
 
-          <Card title="Live signals by this reporter">
+          <Card title="Live signals by this reporter" icon={ListChecks}>
             {r.liveSignals.length === 0 ? (
-              <p className="text-sm text-slate-400">This wallet has no live signals in the registry.</p>
+              <p className="text-sm text-muted">This wallet has no live signals in the registry.</p>
             ) : (
               <ul>
                 {r.liveSignals.map((s) => (
-                  <li key={s.subject} className="flex flex-wrap items-center gap-x-3 border-b border-slate-800 py-2.5 text-sm last:border-0">
+                  <li key={s.subject} className="flex flex-wrap items-center gap-x-3 border-b border-line py-2.5 text-sm last:border-0">
                     <AddrLink address={s.subject} />
-                    <span className="text-slate-300">
+                    <span className="text-ink2">
                       score <b>{s.score}</b> · {s.reasonLabel}
                     </span>
-                    <span className="ml-auto text-xs text-slate-500">{timeAgo(s.reportedAt)}</span>
+                    <span className="ml-auto text-xs text-faint">{timeAgo(s.reportedAt)}</span>
                   </li>
                 ))}
               </ul>
@@ -116,12 +117,12 @@ export default function ReporterPage() {
         </>
       )}
 
-      <Card title="Everything this wallet recorded or retracted">
+      <Card title="Everything this wallet recorded or retracted" icon={History}>
         {history.loading && <Loading />}
         {history.error && <ErrorNote message={history.error} />}
         {history.data &&
           (history.data.data.events.length === 0 ? (
-            <p className="text-sm text-slate-400">No activity.</p>
+            <p className="text-sm text-muted">No activity.</p>
           ) : (
             <ul>
               {history.data.data.events.map((e, i) => (

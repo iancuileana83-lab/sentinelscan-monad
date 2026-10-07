@@ -1,3 +1,60 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Colour tokens. Violet is the brand; green, amber, orange and red are reserved for risk levels.
+   Values are "R G B" so Tailwind can add opacity (bg-card/60). Light is the default; dark applies
+   when data-theme="dark" (set before first paint by the script in index.html). */
+:root {
+  --c-canvas: 247 245 255;
+  --c-card: 255 255 255;
+  --c-card2: 241 237 255;
+  --c-line: 224 217 247;
+  --c-ink: 28 21 53;
+  --c-ink2: 59 51 96;
+  --c-muted: 95 87 133;
+  --c-faint: 118 110 160;
+  --c-brand: 109 74 232;
+  --c-brand-hover: 93 59 214;
+  --c-brand-ink: 91 63 208;
+  --c-ok: 21 128 61;
+  --c-warn: 180 83 9;
+  --c-hi: 194 65 12;
+  --c-bad: 190 18 60;
+  --hero-glow: 124 92 240;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --c-canvas: 14 11 26;
+  --c-card: 23 18 41;
+  --c-card2: 32 26 56;
+  --c-line: 52 43 88;
+  --c-ink: 243 239 255;
+  --c-ink2: 214 207 240;
+  --c-muted: 167 159 203;
+  --c-faint: 138 130 176;
+  --c-brand: 109 74 232;
+  --c-brand-hover: 125 94 240;
+  --c-brand-ink: 182 162 255;
+  --c-ok: 74 222 128;
+  --c-warn: 251 191 36;
+  --c-hi: 251 146 60;
+  --c-bad: 251 113 133;
+  --hero-glow: 124 92 240;
+  color-scheme: dark;
+}
+
+body {
+  background-color: rgb(var(--c-canvas));
+  color: rgb(var(--c-ink2));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

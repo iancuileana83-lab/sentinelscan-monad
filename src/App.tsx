@@ -13,9 +13,9 @@ const HowItWorksPage = lazy(() => import('@/pages/HowItWorksPage'));
 function NotFound() {
   return (
     <div className="mx-auto max-w-xl space-y-3 py-12 text-center">
-      <h1 className="text-xl font-semibold text-slate-100">Page not found</h1>
-      <p className="text-sm text-slate-400">That page does not exist here.</p>
-      <Link className="text-emerald-400 underline" to="/">
+      <h1 className="text-xl font-semibold text-ink">Page not found</h1>
+      <p className="text-sm text-muted">That page does not exist here.</p>
+      <Link className="text-brand-ink underline" to="/">
         Back to the scanner
       </Link>
     </div>

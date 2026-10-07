@@ -14,9 +14,9 @@ interface Quote {
 }
 
 const LOOK = {
-  allow: { Icon: ShieldCheck, label: 'Allowed', style: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' },
-  confirm: { Icon: ShieldAlert, label: 'Confirmation needed', style: 'border-amber-500/30 bg-amber-500/10 text-amber-300' },
-  block: { Icon: ShieldX, label: 'Blocked', style: 'border-rose-500/30 bg-rose-500/10 text-rose-300' },
+  allow: { Icon: ShieldCheck, label: 'Allowed', style: 'border-ok/30 bg-ok/10 text-ok' },
+  confirm: { Icon: ShieldAlert, label: 'Confirmation needed', style: 'border-warn/30 bg-warn/10 text-warn' },
+  block: { Icon: ShieldX, label: 'Blocked', style: 'border-bad/30 bg-bad/10 text-bad' },
 } as const;
 
 /** Shows what the on-chain GuardedPay contract would do for this address, and lets a visitor try it with test MON. */
@@ -69,15 +69,15 @@ export default function GuardCard({ address }: { address: string }) {
   const amountOk = /^\d*\.?\d+$/.test(amount) && Number(amount) > 0;
 
   return (
-    <Card title="On-chain guard: pay through GuardedPay">
-      <p className="text-xs leading-relaxed text-slate-500">
+    <Card title="On-chain guard: pay through GuardedPay" icon={ShieldCheck}>
+      <p className="text-xs leading-relaxed text-faint">
         A small demo contract that reads the public registry before it forwards a payment. From an average score of {GUARD_POLICY.confirmScore} it asks the payer
         to confirm; from {GUARD_POLICY.blockScore} with at least {GUARD_POLICY.minReportersToBlock} reporters it refuses. One reporter alone can never block a
         payment. It is the registry&apos;s opinions applied by code, not proof, and it is testnet only.
       </p>
 
       {loading && !q && (
-        <p className="mt-3 flex items-center gap-2 text-sm text-slate-500">
+        <p className="mt-3 flex items-center gap-2 text-sm text-faint">
           <Loader2 className="animate-spin" size={14} /> Asking the contract…
         </p>
       )}
@@ -88,7 +88,7 @@ export default function GuardCard({ address }: { address: string }) {
           <look.Icon size={22} className="mt-0.5 flex-shrink-0" />
           <div className="text-sm">
             <div className="font-semibold">{look.label}</div>
-            <p className="mt-0.5 text-slate-300">{q.explanation}</p>
+            <p className="mt-0.5 text-ink2">{q.explanation}</p>
           </div>
         </div>
       )}
@@ -96,28 +96,28 @@ export default function GuardCard({ address }: { address: string }) {
       {q && (
         <div className="mt-4 space-y-3">
           <div className="flex flex-wrap items-end gap-3">
-            <label className="text-xs text-slate-400">
+            <label className="text-xs text-muted">
               Test amount (MON)
               <input
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 inputMode="decimal"
-                className="mt-1 block w-28 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none"
+                className="mt-1 block w-28 rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink focus:border-brand focus:outline-none"
               />
             </label>
             {q.decision === 'confirm' && (
-              <label className="flex items-center gap-2 pb-2 text-sm text-slate-300">
-                <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="accent-emerald-500" />I understand the risk and want to pay anyway
+              <label className="flex items-center gap-2 pb-2 text-sm text-ink2">
+                <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="accent-brand" />I understand the risk and want to pay anyway
               </label>
             )}
           </div>
           {!walletPresent ? (
-            <p className="text-sm text-slate-500">Optional: with a browser wallet you could try a test payment through the guard here.</p>
+            <p className="text-sm text-faint">Optional: with a browser wallet you could try a test payment through the guard here.</p>
           ) : !account ? (
             <button
               onClick={connect}
               disabled={busy}
-              className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg border border-brand/40 bg-brand/10 px-4 py-2 text-sm font-medium text-brand-ink hover:bg-brand/20 disabled:opacity-50"
             >
               {busy && <Loader2 className="animate-spin" size={14} />} Connect wallet to try a test payment
             </button>
@@ -125,19 +125,19 @@ export default function GuardCard({ address }: { address: string }) {
             <button
               onClick={pay}
               disabled={busy || !amountOk}
-              className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-50"
             >
               {busy && <Loader2 className="animate-spin" size={14} />} Pay {amountOk ? amount : '…'} test MON through the guard
             </button>
           )}
           {q.decision === 'block' && account && (
-            <p className="text-xs text-slate-500">You can still press the button: the contract will refuse it, and the wallet will show why before anything is sent.</p>
+            <p className="text-xs text-faint">You can still press the button: the contract will refuse it, and the wallet will show why before anything is sent.</p>
           )}
         </div>
       )}
 
       {notice && (
-        <p role="status" className={`mt-3 text-sm ${notice.kind === 'ok' ? 'text-emerald-300' : 'text-rose-300'}`}>
+        <p role="status" className={`mt-3 text-sm ${notice.kind === 'ok' ? 'text-ok' : 'text-bad'}`}>
           {notice.text}{' '}
           {notice.hash && (
             <a className="inline-flex items-center gap-1 underline" href={explorerTxUrl(notice.hash)} target="_blank" rel="noreferrer">
@@ -147,7 +147,7 @@ export default function GuardCard({ address }: { address: string }) {
         </p>
       )}
 
-      <p className="mt-4 text-xs text-slate-600">
+      <p className="mt-4 text-xs text-faint">
         Contract{' '}
         <a className="underline" href={explorerAddressUrl(GUARD_ADDRESS)} target="_blank" rel="noreferrer">
           GuardedPay

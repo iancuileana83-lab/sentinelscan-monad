@@ -33,10 +33,38 @@ export interface RegistryOverview {
     averageScore: number | null;
   };
   scoreBands: { label: string; count: number }[];
+  scoreHistogram: { label: string; count: number }[];
+  activity: { day: string; recorded: number; retracted: number }[];
   reasons: { label: string; count: number }[];
   topReported: { address: string; reporters: number; averageScore: number; lastReportedAt: string }[];
   recent: FeedEvent[];
   historyTruncated: boolean;
+}
+
+/** Events per UTC day for the last `days` days, oldest first, zeros included. */
+export function activityByDay(events: { kind: string; time: number }[], days = 14, now = Date.now()): { day: string; recorded: number; retracted: number }[] {
+  const out: { day: string; recorded: number; retracted: number }[] = [];
+  const today = new Date(now);
+  today.setUTCHours(0, 0, 0, 0);
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * 86400000);
+    out.push({ day: d.toISOString().slice(0, 10), recorded: 0, retracted: 0 });
+  }
+  const byDay = new Map(out.map((r) => [r.day, r]));
+  for (const e of events) {
+    const row = byDay.get(new Date(e.time * 1000).toISOString().slice(0, 10));
+    if (!row) continue;
+    if (e.kind === 'recorded') row.recorded += 1;
+    else row.retracted += 1;
+  }
+  return out;
+}
+
+/** Ten buckets of ten points: 0-9, 10-19, ... 90-100. */
+export function scoreHistogram(scores: number[]): { label: string; count: number }[] {
+  const buckets = Array.from({ length: 10 }, (_, i) => ({ label: i === 9 ? '90-100' : `${i * 10}-${i * 10 + 9}`, count: 0 }));
+  for (const s of scores) buckets[Math.min(9, Math.max(0, Math.floor(s / 10)))].count += 1;
+  return buckets;
 }
 
 export async function registryOverview(apiKey: string): Promise<RegistryOverview> {
@@ -83,6 +111,8 @@ export async function registryOverview(apiKey: string): Promise<RegistryOverview
       averageScore: signals.length ? Math.round(signals.reduce((a, s) => a + s.score, 0) / signals.length) : null,
     },
     scoreBands: bands,
+    scoreHistogram: scoreHistogram(signals.map((s) => s.score)),
+    activity: activityByDay(events),
     reasons: [...reasonCounts.entries()].map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count),
     topReported,
     recent: events.slice(-20).reverse().map(toFeed),

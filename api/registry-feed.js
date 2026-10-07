@@ -5079,6 +5079,28 @@ var toFeed = (e) => ({
   time: new Date(e.time * 1e3).toISOString(),
   txHash: e.txHash
 });
+function activityByDay(events, days = 14, now = Date.now()) {
+  const out = [];
+  const today = new Date(now);
+  today.setUTCHours(0, 0, 0, 0);
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * 864e5);
+    out.push({ day: d.toISOString().slice(0, 10), recorded: 0, retracted: 0 });
+  }
+  const byDay = new Map(out.map((r) => [r.day, r]));
+  for (const e of events) {
+    const row = byDay.get(new Date(e.time * 1e3).toISOString().slice(0, 10));
+    if (!row) continue;
+    if (e.kind === "recorded") row.recorded += 1;
+    else row.retracted += 1;
+  }
+  return out;
+}
+function scoreHistogram(scores) {
+  const buckets = Array.from({ length: 10 }, (_, i) => ({ label: i === 9 ? "90-100" : `${i * 10}-${i * 10 + 9}`, count: 0 }));
+  for (const s of scores) buckets[Math.min(9, Math.max(0, Math.floor(s / 10)))].count += 1;
+  return buckets;
+}
 async function registryOverview(apiKey) {
   const { events, signals, truncated } = await fetchHistory(apiKey);
   const subjects = /* @__PURE__ */ new Map();
@@ -5116,6 +5138,8 @@ async function registryOverview(apiKey) {
       averageScore: signals.length ? Math.round(signals.reduce((a, s) => a + s.score, 0) / signals.length) : null
     },
     scoreBands: bands,
+    scoreHistogram: scoreHistogram(signals.map((s) => s.score)),
+    activity: activityByDay(events),
     reasons: [...reasonCounts.entries()].map(([label, count]) => ({ label, count })).sort((a, b2) => b2.count - a.count),
     topReported,
     recent: events.slice(-20).reverse().map(toFeed),

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Copy, Loader2, Play } from 'lucide-react';
+import { Check, Copy, Loader2, Play, Plug, ShieldCheck } from 'lucide-react';
 import { Card, ErrorNote } from '@/components/Card';
 import { REGISTRY_ADDRESS } from '@/lib/registryConfig';
 
@@ -32,11 +32,11 @@ function CodeBlock({ code, label }: { code: string; label: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="relative">
-      <pre className="overflow-x-auto rounded-lg bg-slate-950 p-3 pr-12 text-xs leading-relaxed text-slate-300" aria-label={label}>
+      <pre className="overflow-x-auto rounded-lg bg-canvas p-3 pr-12 text-xs leading-relaxed text-ink2" aria-label={label}>
         <code>{code}</code>
       </pre>
       <button
-        className="absolute right-2 top-2 rounded-md border border-slate-700 p-1.5 text-slate-400 hover:bg-slate-800"
+        className="absolute right-2 top-2 rounded-md border border-line p-1.5 text-muted hover:bg-card2"
         aria-label={`Copy ${label}`}
         onClick={async () => {
           try {
@@ -48,7 +48,7 @@ function CodeBlock({ code, label }: { code: string; label: string }) {
           }
         }}
       >
-        {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+        {copied ? <Check size={14} className="text-brand-ink" /> : <Copy size={14} />}
       </button>
     </div>
   );
@@ -103,18 +103,18 @@ function Playground({ tools }: { tools: Tool[] }) {
             aria-selected={t.name === name}
             onClick={() => pick(t.name)}
             className={`rounded-lg border px-3 py-1.5 font-mono text-xs transition ${
-              t.name === name ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300' : 'border-slate-700 text-slate-400 hover:bg-slate-800'
+              t.name === name ? 'border-brand/40 bg-brand/10 text-brand-ink' : 'border-line text-muted hover:bg-card2'
             }`}
           >
             {t.name}
           </button>
         ))}
       </div>
-      {tool && <p className="text-sm leading-relaxed text-slate-400">{tool.description}</p>}
+      {tool && <p className="text-sm leading-relaxed text-muted">{tool.description}</p>}
 
       <div className="space-y-3">
         {Object.entries(tool?.inputSchema.properties ?? {}).map(([key, spec]) => (
-          <label key={key} className="block text-sm text-slate-300">
+          <label key={key} className="block text-sm text-ink2">
             <span className="font-mono text-xs">
               {key}
               {tool?.inputSchema.required?.includes(key) ? ' *' : ' (optional)'}
@@ -124,21 +124,21 @@ function Playground({ tools }: { tools: Tool[] }) {
               onChange={(e) => setArgs((a) => ({ ...a, [key]: e.target.value }))}
               spellCheck={false}
               placeholder={spec.description}
-              className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 font-mono text-xs text-slate-100 placeholder-slate-600 focus:border-emerald-500 focus:outline-none"
+              className="mt-1 w-full rounded-lg border border-line bg-card px-3 py-2 font-mono text-xs text-ink placeholder-faint focus:border-brand focus:outline-none"
             />
           </label>
         ))}
       </div>
 
       <div>
-        <div className="mb-1 text-xs text-slate-500">Request sent to /api/mcp</div>
+        <div className="mb-1 text-xs text-faint">Request sent to /api/mcp</div>
         <CodeBlock label="request" code={JSON.stringify(request, null, 2)} />
       </div>
 
       <button
         onClick={run}
         disabled={running}
-        className="flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+        className="flex items-center gap-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-hover disabled:opacity-50"
       >
         {running ? <Loader2 className="animate-spin" size={16} /> : <Play size={16} />} Run tool
       </button>
@@ -146,8 +146,8 @@ function Playground({ tools }: { tools: Tool[] }) {
       {error && <ErrorNote message={error} />}
       {output && (
         <div>
-          <div className="mb-1 text-xs text-slate-500">Result (structuredContent){ms !== null && ` · ${ms} ms`}</div>
-          <pre className="max-h-96 overflow-auto rounded-lg bg-slate-950 p-3 text-xs leading-relaxed text-slate-300" aria-label="result">
+          <div className="mb-1 text-xs text-faint">Result (structuredContent){ms !== null && ` · ${ms} ms`}</div>
+          <pre className="max-h-96 overflow-auto rounded-lg bg-canvas p-3 text-xs leading-relaxed text-ink2" aria-label="result">
             <code>{output}</code>
           </pre>
         </div>
@@ -170,18 +170,18 @@ export default function AgentsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-slate-100">For AI agents</h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <h1 className="text-xl font-semibold text-ink">For AI agents</h1>
+        <p className="mt-1 text-sm text-muted">
           The same scanner and registry reader, as read-only tools an AI agent can call. They never sign or send anything, and none of them records a signal.
         </p>
       </div>
 
-      <Card title="Connect an agent">
-        <div className="space-y-3 text-sm text-slate-400">
+      <Card title="Connect an agent" icon={Plug}>
+        <div className="space-y-3 text-sm text-muted">
           <p>This is a standard remote MCP server (Streamable HTTP, stateless). Add it to Claude Code with one command:</p>
           <CodeBlock label="claude command" code={`claude mcp add --transport http sentinelscan-monad ${origin}/api/mcp`} />
           <p>
-            Any other MCP client can use the URL <code className="text-slate-300">{origin}/api/mcp</code>. Without MCP, plain JSON works too: <code className="text-slate-300">GET /api/agent-tools</code>{' '}
+            Any other MCP client can use the URL <code className="text-ink2">{origin}/api/mcp</code>. Without MCP, plain JSON works too: <code className="text-ink2">GET /api/agent-tools</code>{' '}
             lists the tools with their JSON schemas, and a POST calls one:
           </p>
           <CodeBlock
@@ -189,26 +189,26 @@ export default function AgentsPage() {
             code={`curl -X POST ${origin}/api/agent-tools \\\n  -H 'content-type: application/json' \\\n  -d '{"tool":"scan_wallet","arguments":{"address":"${SAMPLE_ADDRESS}"}}'`}
           />
           <p>
-            There is also a scripted demo client in the repository: <code className="text-slate-300">node examples/agent-demo.mjs</code>.
+            There is also a scripted demo client in the repository: <code className="text-ink2">node examples/agent-demo.mjs</code>.
           </p>
         </div>
       </Card>
 
-      <Card title="Try the MCP tools">
+      <Card title="Try the MCP tools" icon={Play}>
         {error && <ErrorNote message={error} />}
         {!tools && !error && (
-          <p className="flex items-center gap-2 text-sm text-slate-500">
+          <p className="flex items-center gap-2 text-sm text-faint">
             <Loader2 className="animate-spin" size={14} /> Asking the server for its tools…
           </p>
         )}
         {tools && <Playground tools={tools} />}
-        <p className="mt-4 text-xs text-slate-500">
+        <p className="mt-4 text-xs text-faint">
           This playground sends real JSON-RPC calls to this site&apos;s own MCP endpoint, the same ones an agent would send.
         </p>
       </Card>
 
-      <Card title="What agents get, and what they are protected from">
-        <ul className="list-disc space-y-1.5 pl-5 text-sm text-slate-400">
+      <Card title="What agents get, and what they are protected from" icon={ShieldCheck}>
+        <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted">
           <li>Every result carries a &quot;signal, not verdict&quot; notice, plus evidence: transaction hashes, top counterparties and the reasons behind each score.</li>
           <li>On-chain text such as token symbols is untrusted: it is cleaned of control and invisible characters and shortened before an agent sees it. Agents should still treat it as data, never as instructions.</li>
           <li>Tools are annotated read-only. Unexpected arguments are rejected, and requests are rate limited per client on a best-effort basis.</li>

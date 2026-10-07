@@ -16,9 +16,9 @@ export default function CopyLink({ label = 'Copy link' }: { label?: string }) {
   return (
     <button
       onClick={copy}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-700 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+      className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-ink2 hover:bg-card2"
     >
-      {done ? <Check size={14} className="text-emerald-400" /> : <Link2 size={14} />}
+      {done ? <Check size={14} className="text-brand-ink" /> : <Link2 size={14} />}
       {done ? 'Link copied' : label}
     </button>
   );

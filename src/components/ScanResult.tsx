@@ -6,10 +6,10 @@ import RegistryPanel from '@/components/RegistryPanel';
 import type { ScanSignal, ScanView } from '@/lib/viewTypes';
 
 const severityStyle: Record<ScanSignal['severity'], string> = {
-  low: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
-  medium: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
-  high: 'border-orange-500/30 bg-orange-500/10 text-orange-300',
-  critical: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
+  low: 'border-ok/30 bg-ok/10 text-ok',
+  medium: 'border-warn/30 bg-warn/10 text-warn',
+  high: 'border-hi/30 bg-hi/10 text-hi',
+  critical: 'border-bad/30 bg-bad/10 text-bad',
 };
 
 interface Props {
@@ -24,38 +24,38 @@ interface Props {
 export default function ScanResult({ view, warning, linkToAddress = true, showRegistry = true }: Props) {
   return (
     <section className="space-y-5">
-      <div className="rounded-2xl border border-slate-700/50 bg-slate-900/60 p-5">
-        <div className="mb-1 flex items-center justify-between gap-2 text-xs uppercase tracking-wide text-slate-500">
+      <div className="rounded-2xl border border-line bg-card p-5">
+        <div className="mb-1 flex items-center justify-between gap-2 text-xs uppercase tracking-wide text-faint">
           <span className="flex items-center gap-2">
             <Wallet size={14} /> {view.kind}
           </span>
           {view.kind === 'wallet' && linkToAddress && (
-            <Link className="normal-case text-emerald-400 underline" to={`/address/${view.target}`}>
+            <Link className="normal-case text-brand-ink underline" to={`/address/${view.target}`}>
               Open address page
             </Link>
           )}
         </div>
-        <p className="break-all font-mono text-sm text-slate-300">{view.target}</p>
-        {warning && <p className="mt-2 text-sm text-amber-300">{warning}</p>}
+        <p className="break-all font-mono text-sm text-ink2">{view.target}</p>
+        {warning && <p className="mt-2 text-sm text-warn">{warning}</p>}
         <div className="mt-4 flex justify-center">
           <RiskGauge score={view.score} level={view.level} />
         </div>
         <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {view.facts.map((f) => (
-            <div key={f.label} className="rounded-lg bg-slate-800/50 p-3">
-              <dt className="text-xs text-slate-500">{f.label}</dt>
-              <dd className="mt-0.5 break-words text-sm font-medium text-slate-200">{f.value}</dd>
+            <div key={f.label} className="rounded-lg bg-card2/50 p-3">
+              <dt className="text-xs text-faint">{f.label}</dt>
+              <dd className="mt-0.5 break-words text-sm font-medium text-ink">{f.value}</dd>
             </div>
           ))}
         </dl>
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-slate-100">Signals found</h2>
+        <h2 className="text-sm font-semibold text-ink">Signals found</h2>
         {view.signals.map((f) => (
           <div key={f.title} className={`rounded-lg border p-3 ${severityStyle[f.severity]}`}>
             <div className="text-sm font-medium">{f.title}</div>
-            <p className="mt-0.5 text-sm text-slate-300">{f.description}</p>
+            <p className="mt-0.5 text-sm text-ink2">{f.description}</p>
           </div>
         ))}
       </div>

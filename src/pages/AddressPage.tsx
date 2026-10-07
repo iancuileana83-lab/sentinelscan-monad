@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, History } from 'lucide-react';
 import { Card, ErrorNote } from '@/components/Card';
 import CopyLink from '@/components/CopyLink';
 import GuardCard from '@/components/GuardCard';
@@ -29,9 +29,9 @@ export default function AddressPage() {
   if (!valid) {
     return (
       <div className="mx-auto max-w-xl space-y-3 py-12 text-center">
-        <h1 className="text-xl font-semibold text-slate-100">Not a valid address</h1>
-        <p className="text-sm text-slate-400">An address is 0x followed by 40 hex characters.</p>
-        <Link className="text-emerald-400 underline" to="/">
+        <h1 className="text-xl font-semibold text-ink">Not a valid address</h1>
+        <p className="text-sm text-muted">An address is 0x followed by 40 hex characters.</p>
+        <Link className="text-brand-ink underline" to="/">
           Back to the scanner
         </Link>
       </div>
@@ -42,11 +42,11 @@ export default function AddressPage() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold text-slate-100">Address</h1>
+          <h1 className="text-xl font-semibold text-ink">Address</h1>
           {labelFor(address) && <p className="mt-1 inline-block rounded-full bg-violet-500/10 px-3 py-0.5 text-xs text-violet-300">{labelFor(address)}</p>}
-          <p className="mt-1 break-all font-mono text-sm text-slate-400">{address}</p>
+          <p className="mt-1 break-all font-mono text-sm text-muted">{address}</p>
           <a
-            className="mt-1 inline-flex items-center gap-1 text-xs text-slate-500 underline"
+            className="mt-1 inline-flex items-center gap-1 text-xs text-faint underline"
             href={`${MONAD_TESTNET.explorer}/address/${address}`}
             target="_blank"
             rel="noreferrer"
@@ -63,12 +63,12 @@ export default function AddressPage() {
 
       <GuardCard address={address} />
 
-      <Card title="History of signals about this address">
+      <Card title="History of signals about this address" icon={History}>
         {history.loading && <Loading />}
         {history.error && <ErrorNote message={history.error} />}
         {history.data &&
           (history.data.data.events.length === 0 ? (
-            <p className="text-sm text-slate-400">Nothing has been recorded about this address yet.</p>
+            <p className="text-sm text-muted">Nothing has been recorded about this address yet.</p>
           ) : (
             <ul>
               {history.data.data.events.map((e, i) => (
