@@ -46,6 +46,38 @@ Design, kept deliberately small:
 Honest limit: anyone can use many wallets, so the reporter count is a hint, not proof. This is a
 demo of a public reputation primitive, not a trust oracle.
 
+## For AI agents: read-only tools (MCP and JSON)
+
+The same scanner is available to AI agents. Three tools, all **read-only**: an agent cannot sign
+or send anything with them, and none of them records a signal on-chain.
+
+| Tool | What it returns |
+|---|---|
+| `scan_wallet` | 0-100 risk signal, the individual signals, facts, and evidence (recent transaction hashes, top counterparties) |
+| `scan_transaction` | 0-100 risk signal, the signals and facts for one transaction |
+| `get_registry_signals` | How many reporters recorded a signal about an address in `RiskRegistry`, their average score, last report time |
+
+- **MCP server** (Streamable HTTP, stateless): `https://monad-risk-signals.vercel.app/api/mcp`
+- **Plain JSON**: `GET /api/agent-tools` returns the tool list with JSON schemas, and
+  `POST /api/agent-tools` with `{"tool": "scan_wallet", "arguments": {"address": "0x..."}}` calls one.
+
+Add it to Claude Code:
+
+```bash
+claude mcp add --transport http sentinelscan-monad https://monad-risk-signals.vercel.app/api/mcp
+```
+
+Run the scripted demo (an official MCP client discovers the tools, calls them and answers only
+from the returned evidence; it uses no language model):
+
+```bash
+node examples/agent-demo.mjs
+```
+
+Safety choices: tool outputs carry a "signal, not verdict" notice; token symbols and other
+on-chain text are cleaned and shortened because they are untrusted input; unexpected arguments are
+rejected; requests are rate limited per client on a best-effort basis.
+
 ## What's new for Metropolis
 
 SentinelScan started earlier as an Ethereum and Arbitrum scanner,
@@ -71,7 +103,8 @@ is a new, standalone app. What is reused and what is new:
   add Monad Testnet, record, retract (`src/lib/wallet.ts`, `src/components/RegistryPanel.tsx`).
 - A new standalone app and backend. The earlier project depended on Supabase Edge Functions. This
   one uses a few small serverless functions in `api/` that keep the explorer key on the server.
-- Tests for the scoring and the app's contract address, and this documentation.
+- **Read-only AI-agent tools**: an MCP server and a JSON API with schemas (`server/tools.ts`, `server/mcp.ts`), plus a demo client (`examples/agent-demo.mjs`).
+- Tests for the scoring, the agent tools and the app's contract address, and this documentation.
 
 ## How it works
 
