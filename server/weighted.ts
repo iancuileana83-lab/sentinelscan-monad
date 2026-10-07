@@ -95,3 +95,36 @@ export async function readWeighted(subject: string, apiKey: string): Promise<Wei
     historyTruncated: truncated,
   };
 }
+
+export interface ReporterView {
+  address: string;
+  weight: number;
+  factors: WeightBreakdown & { ageDays: number; transactions: number; reportsMade: number };
+  liveSignals: { subject: string; score: number; reasonLabel: string; reportedAt: string }[];
+  explanation: string[];
+  note: string;
+}
+
+export async function readReporter(address: string, apiKey: string): Promise<ReporterView> {
+  const { signals } = await fetchLiveSignals(apiKey);
+  const mine = signals.filter((s) => s.reporter.toLowerCase() === address.toLowerCase());
+  const history = await walletHistory(address, apiKey);
+  const w = reputationWeight({ ...history, reportsMade: mine.length });
+  const pct = (x: number) => Math.round(x * 100);
+  return {
+    address,
+    weight: w.weight,
+    factors: { ...w, ageDays: Math.round(history.ageDays * 10) / 10, transactions: history.transactions, reportsMade: mine.length },
+    liveSignals: mine
+      .sort((a, b) => b.reportedAt - a.reportedAt)
+      .slice(0, 50)
+      .map((s) => ({ subject: s.subject, score: s.score, reasonLabel: REASON_LABELS[s.reasonCode] ?? 'Other', reportedAt: new Date(s.reportedAt * 1000).toISOString() })),
+    explanation: [
+      `Age: ${Math.round(history.ageDays * 10) / 10} days of history gives ${pct(w.age)}% of the age credit (full credit at 30 days).`,
+      `Activity: ${history.transactions} transaction(s) seen gives ${pct(w.activity)}% of the activity credit (full credit at 50).`,
+      `Restraint: ${mine.length} live signal(s) recorded gives a restraint factor of ${w.restraint} (1 up to 10 signals, then falling).`,
+      `Weight = ${WEIGHT_FLOOR} + 0.9 x (0.5 x age + 0.5 x activity) x restraint = ${w.weight}.`,
+    ],
+    note: 'A heuristic from public wallet history. It lowers the weight of cheap spam, but patient attackers can age wallets.',
+  };
+}

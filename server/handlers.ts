@@ -1,7 +1,8 @@
 // Shared by the Vercel functions in /api and by the dev server in vite.config.ts.
 import { buildTxReport, buildWalletReport } from './reports.ts';
 import { readRegistry } from './registry.ts';
-import { readWeighted } from './weighted.ts';
+import { readReporter, readWeighted } from './weighted.ts';
+import { registryEvents, registryOverview } from './registryFeed.ts';
 import { txView, walletView } from './views.ts';
 
 export interface HandlerResult {
@@ -61,6 +62,29 @@ export async function txScan(txHash: unknown, apiKey: string | undefined): Promi
   if (!apiKey) return fail(500, 'Server is missing its explorer key (ETHERSCAN_API_KEY).');
   try {
     return { status: 200, body: { data: txView(await buildTxReport(txHash.trim(), apiKey)) } };
+  } catch (e) {
+    return fail(502, e instanceof Error ? e.message : 'Unknown server error');
+  }
+}
+
+export async function registryFeed(subject: unknown, reporter: unknown, apiKey: string | undefined): Promise<HandlerResult> {
+  if (!apiKey) return fail(500, 'Server is missing its explorer key (ETHERSCAN_API_KEY).');
+  try {
+    const s = typeof subject === 'string' && subject ? subject.trim() : undefined;
+    const r = typeof reporter === 'string' && reporter ? reporter.trim() : undefined;
+    if ((s && !ADDRESS.test(s)) || (r && !ADDRESS.test(r))) return fail(400, 'Enter a valid address: 0x followed by 40 hex characters.');
+    if (s || r) return { status: 200, body: { data: await registryEvents(apiKey, { subject: s, reporter: r }) } };
+    return { status: 200, body: { data: await registryOverview(apiKey) } };
+  } catch (e) {
+    return fail(502, e instanceof Error ? e.message : 'Unknown server error');
+  }
+}
+
+export async function reporterView(address: unknown, apiKey: string | undefined): Promise<HandlerResult> {
+  if (typeof address !== 'string' || !ADDRESS.test(address.trim())) return fail(400, 'Enter a valid wallet address: 0x followed by 40 hex characters.');
+  if (!apiKey) return fail(500, 'Server is missing its explorer key (ETHERSCAN_API_KEY).');
+  try {
+    return { status: 200, body: { data: await readReporter(address.trim(), apiKey) } };
   } catch (e) {
     return fail(502, e instanceof Error ? e.message : 'Unknown server error');
   }

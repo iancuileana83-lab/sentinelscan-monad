@@ -27,6 +27,7 @@ export interface RawEvent {
   reasonCode?: number;
   time: number;
   order: number; // block * 1e6 + log index, for chronological order
+  txHash?: string;
 }
 
 const key = (subject: string, reporter: string) => `${subject.toLowerCase()}:${reporter.toLowerCase()}`;
@@ -54,7 +55,7 @@ async function fetchEvents(topic0: string, kind: RawEvent['kind'], apiKey: strin
     if (/no records/i.test(String(reply.message)) || /no records/i.test(String(reply.result))) return { events: [], truncated: false };
     throw new Error('Could not read the registry history.');
   }
-  const logs = reply.result as { topics: string[]; data: string; timeStamp: string; blockNumber: string; logIndex: string }[];
+  const logs = reply.result as { topics: string[]; data: string; timeStamp: string; blockNumber: string; logIndex: string; transactionHash: string }[];
   const events = logs.map((l) => {
     const parsed = iface.parseLog({ topics: l.topics, data: l.data })!;
     return {
@@ -65,20 +66,34 @@ async function fetchEvents(topic0: string, kind: RawEvent['kind'], apiKey: strin
       reasonCode: kind === 'recorded' ? Number(parsed.args.reasonCode) : undefined,
       time: Number(l.timeStamp),
       order: Number(l.blockNumber) * 1_000_000 + (Number(l.logIndex) || 0),
+      txHash: l.transactionHash,
     } satisfies RawEvent;
   });
   return { events, truncated: logs.length >= PAGE };
 }
 
-let cache: { at: number; value: { signals: LiveSignal[]; truncated: boolean } } | null = null;
+let cache: { at: number; value: RegistryHistory } | null = null;
 const TTL_MS = 20_000;
 
-/** All live signals in the registry. Cached briefly because the explorer is rate limited. */
-export async function fetchLiveSignals(apiKey: string): Promise<{ signals: LiveSignal[]; truncated: boolean }> {
+export interface RegistryHistory {
+  events: RawEvent[]; // every record and retract, oldest first
+  signals: LiveSignal[]; // who currently has a live signal about whom
+  truncated: boolean;
+}
+
+/** The full registry history. Cached briefly because the explorer is rate limited. */
+export async function fetchHistory(apiKey: string): Promise<RegistryHistory> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.value;
   const recorded = await fetchEvents(RECORDED, 'recorded', apiKey);
   const retracted = await fetchEvents(RETRACTED, 'retracted', apiKey);
-  const value = { signals: applyEvents([...recorded.events, ...retracted.events]), truncated: recorded.truncated || retracted.truncated };
+  const events = [...recorded.events, ...retracted.events].sort((a, b) => a.order - b.order);
+  const value = { events, signals: applyEvents(events), truncated: recorded.truncated || retracted.truncated };
   cache = { at: Date.now(), value };
   return value;
+}
+
+/** All live signals in the registry. */
+export async function fetchLiveSignals(apiKey: string): Promise<{ signals: LiveSignal[]; truncated: boolean }> {
+  const { signals, truncated } = await fetchHistory(apiKey);
+  return { signals, truncated };
 }

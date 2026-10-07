@@ -5075,20 +5075,26 @@ async function fetchEvents(topic0, kind, apiKey) {
       score: kind === "recorded" ? Number(parsed.args.score) : void 0,
       reasonCode: kind === "recorded" ? Number(parsed.args.reasonCode) : void 0,
       time: Number(l.timeStamp),
-      order: Number(l.blockNumber) * 1e6 + (Number(l.logIndex) || 0)
+      order: Number(l.blockNumber) * 1e6 + (Number(l.logIndex) || 0),
+      txHash: l.transactionHash
     };
   });
   return { events, truncated: logs.length >= PAGE };
 }
 var cache = null;
 var TTL_MS = 2e4;
-async function fetchLiveSignals(apiKey) {
+async function fetchHistory(apiKey) {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.value;
   const recorded = await fetchEvents(RECORDED, "recorded", apiKey);
   const retracted = await fetchEvents(RETRACTED, "retracted", apiKey);
-  const value = { signals: applyEvents([...recorded.events, ...retracted.events]), truncated: recorded.truncated || retracted.truncated };
+  const events = [...recorded.events, ...retracted.events].sort((a, b2) => a.order - b2.order);
+  const value = { events, signals: applyEvents(events), truncated: recorded.truncated || retracted.truncated };
   cache = { at: Date.now(), value };
   return value;
+}
+async function fetchLiveSignals(apiKey) {
+  const { signals, truncated } = await fetchHistory(apiKey);
+  return { signals, truncated };
 }
 
 // server/reputation.ts
