@@ -74,6 +74,7 @@ export default function AgentDemo() {
           <button
             key={s.address}
             title={s.note}
+            aria-label={s.label}
             disabled={busy}
             onClick={() => {
               setAddress(s.address);

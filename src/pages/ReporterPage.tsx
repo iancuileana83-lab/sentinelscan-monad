@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { History, ListChecks, Scale } from 'lucide-react';
 import AddrLink from '@/components/AddrLink';
@@ -37,6 +38,9 @@ function Meter({ label, value, detail }: { label: string; value: number; detail:
 export default function ReporterPage() {
   const { address = '' } = useParams();
   const valid = ADDRESS.test(address);
+  useEffect(() => {
+    document.title = valid ? `Reporter ${address.slice(0, 8)}… · SentinelScan on Monad` : 'SentinelScan on Monad';
+  }, [address, valid]);
   const rep = useApi<{ data: Reporter }>(valid ? `/api/reporter?address=${address}` : null);
   const history = useApi<{ data: { events: FeedEvent[]; total: number } }>(valid ? `/api/registry-feed?reporter=${address}` : null);
 

@@ -4,6 +4,14 @@ import { Menu, ShieldCheck, X } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import { REGISTRY_ADDRESS, explorerAddressUrl } from '@/lib/registryConfig';
 
+const TITLES: Record<string, string> = {
+  '/': 'SentinelScan on Monad',
+  '/registry': 'Registry · SentinelScan on Monad',
+  '/radar': 'Live radar · SentinelScan on Monad',
+  '/agents': 'For AI agents · SentinelScan on Monad',
+  '/how-it-works': 'How it works · SentinelScan on Monad',
+};
+
 // Pages are added here as they are built.
 const NAV: { to: string; label: string; end?: boolean }[] = [
   { to: '/', label: 'Scanner', end: true },
@@ -23,10 +31,18 @@ export default function Layout() {
   useEffect(() => {
     setOpen(false);
     window.scrollTo(0, 0);
+    // Address and reporter pages set their own titles.
+    if (TITLES[pathname]) document.title = TITLES[pathname];
   }, [pathname]);
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas text-ink2">
+      <a
+        href="#content"
+        className="sr-only rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white focus:not-sr-only focus:absolute focus:left-3 focus:top-3 focus:z-50"
+      >
+        Skip to content
+      </a>
       <header className="sticky top-0 z-20 border-b border-line bg-canvas/90 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
           <Link to="/" className="flex items-center gap-3">
@@ -68,7 +84,7 @@ export default function Layout() {
         )}
       </header>
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:py-10">
+      <main id="content" tabIndex={-1} className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 outline-none sm:py-10">
         <Outlet />
       </main>
 
