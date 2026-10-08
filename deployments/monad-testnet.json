@@ -19,5 +19,17 @@
     "target": "0x3dc0Cc8bc1BbED963Fc2841b9a975Ab933A94F42",
     "reporterB": "0x0228ba8C75b9eAF02Fa06872028DA9754B2C8874",
     "note": "Demo address generated for the demo; its key was discarded. Signals were recorded by two test wallets."
+  },
+  "examples": {
+    "riskAwarePayout": {
+      "address": "0x2145308E2932D126d461A4c1Aa583bF2cdf21e7e",
+      "deployTx": "0x887d2eb34cefb552bdb4b91451db758dfca4bd567dac0fc95f6c5c78e1e136fe",
+      "constructorArgs": [
+        "0xb0C3Be753788a5962DE52db929f49df02700AFd4",
+        "0x6e124EB8B980ae3e1CB79f856b8dC0d6F691d5bD",
+        60,
+        1
+      ]
+    }
   }
 }

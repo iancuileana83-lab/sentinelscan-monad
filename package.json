@@ -8,7 +8,7 @@
     "build": "npm run build:api && tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "test": "node --experimental-strip-types --test tests/*.test.ts packages/sentinelscan-sdk/test/*.test.ts",
     "test:contract": "hardhat test",
     "compile": "hardhat compile",
     "build:api": "node scripts/build-api.mjs"

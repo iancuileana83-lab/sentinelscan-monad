@@ -4995,10 +4995,12 @@ var Interface = class _Interface {
 var REGISTRY_ADDRESS = "0xb0C3Be753788a5962DE52db929f49df02700AFd4";
 var GUARD_ADDRESS = "0x6e124EB8B980ae3e1CB79f856b8dC0d6F691d5bD";
 var GUARD_POLICY = { confirmScore: 40, blockScore: 70, minReportersToConfirm: 1, minReportersToBlock: 2 };
+var EXAMPLE_ADDRESS = "0x2145308E2932D126d461A4c1Aa583bF2cdf21e7e";
 var DEMO_TARGET = "0x3dc0Cc8bc1BbED963Fc2841b9a975Ab933A94F42";
 var KNOWN_LABELS = {
   [REGISTRY_ADDRESS.toLowerCase()]: "RiskRegistry contract",
   [GUARD_ADDRESS.toLowerCase()]: "GuardedPay contract",
+  [EXAMPLE_ADDRESS.toLowerCase()]: "RiskAwarePayout (example contract)",
   [DEMO_TARGET.toLowerCase()]: "Demo address (made for this demo)",
   "0x0228ba8c75b9eaf02fa06872028da9754b2c8874": "Demo test reporter",
   "0x0c6b75389a0d48f2eb16cc91022728fb6cbe7fc5": "Project test wallet",

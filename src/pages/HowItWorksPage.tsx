@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeftRight, BookOpen, Database, Gauge, Lightbulb, Scale, ShieldCheck, Sparkles, TriangleAlert, Wallet } from 'lucide-react';
+import { ArrowLeftRight, BookOpen, Database, Fingerprint, Gauge, Lightbulb, Scale, ShieldCheck, Sparkles, TriangleAlert, Wallet } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/Card';
 import { LEVELS, LIMITS, TX_RULES, WALLET_RULES, type Rule } from '@/lib/rules';
@@ -153,6 +153,54 @@ export default function HowItWorksPage() {
           <li>The agent cannot override the on-chain guard: a blocked address is always refused, and a risky one always goes to a human. If the model fails, a plain answer built from the same evidence is shown.</li>
           <li>The agent never sends money. Runs are limited per visitor and per day, and the AI can be switched off at once.</li>
         </ul>
+      </Card>
+
+      <Card title="Agent identity and reputation (the ERC-8004 idea)" icon={Fingerprint}>
+        <p className="text-sm leading-relaxed text-muted">
+          ERC-8004 (&ldquo;Trustless Agents&rdquo;) is a proposed standard that gives AI agents on-chain building blocks for trust: an identity registry, a
+          reputation registry for feedback about agents, and a validation registry for checks of an agent&apos;s work. <b>We do not implement it.</b> SentinelScan
+          is a reputation primitive for <i>addresses</i>, which includes the wallets agents pay from and pay to, built so that the same idea can grow
+          into it.
+        </p>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full min-w-[520px] text-left text-sm">
+            <thead className="text-xs text-faint">
+              <tr>
+                <th className="pb-2 pr-3 font-medium">The idea</th>
+                <th className="pb-2 pr-3 font-medium">In SentinelScan</th>
+                <th className="pb-2 font-medium">What is missing</th>
+              </tr>
+            </thead>
+            <tbody className="align-top text-muted">
+              <tr className="border-t border-line">
+                <td className="py-2 pr-3 text-ink2">Identity: a portable id for an agent</td>
+                <td className="py-2 pr-3">An agent is its wallet address. A few known addresses carry friendly labels.</td>
+                <td className="py-2">No agent registration, no identity token, no agent profile.</td>
+              </tr>
+              <tr className="border-t border-line">
+                <td className="py-2 pr-3 text-ink2">Reputation: feedback about an agent from others</td>
+                <td className="py-2 pr-3">RiskRegistry: any wallet records a 0 to 100 score and one fixed reason code about an address, one live signal per reporter, retractable by its author.</td>
+                <td className="py-2">Not the ERC-8004 feedback format or interfaces. Our scores are risk signals, not ratings of task quality.</td>
+              </tr>
+              <tr className="border-t border-line">
+                <td className="py-2 pr-3 text-ink2">Weighting who is speaking</td>
+                <td className="py-2 pr-3">Each reporter counts by their own wallet history: age, activity and restraint. Cheap spam counts less.</td>
+                <td className="py-2">Computed off-chain by one server, and patient attackers can still age wallets.</td>
+              </tr>
+              <tr className="border-t border-line">
+                <td className="py-2 pr-3 text-ink2">Validation: independent checks of an agent&apos;s work</td>
+                <td className="py-2 pr-3">Not built. The nearest thing is that the agent here must cite numbered evidence, and the contracts are verified.</td>
+                <td className="py-2">No validators, no attestations.</td>
+              </tr>
+              <tr className="border-t border-line">
+                <td className="py-2 pr-3 text-ink2">Using reputation before acting</td>
+                <td className="py-2 pr-3">GuardedPay reads the registry before forwarding a payment, and agents can call the read-only tools first.</td>
+                <td className="py-2">Only payments, only on testnet.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-3 text-xs text-faint">A natural next step would be an adapter that mirrors signals into ERC-8004 feedback entries. That is not built.</p>
       </Card>
 
       <Card title="Reputation weights (off-chain)" icon={Scale}>

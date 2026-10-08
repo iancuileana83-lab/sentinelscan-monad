@@ -1,0 +1,22 @@
+{
+  "name": "sentinelscan-sdk",
+  "version": "0.1.0",
+  "description": "Check an address on Monad Testnet in three lines: risk signal, public registry signals and the on-chain guard decision. Read-only.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "src", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "engines": { "node": ">=18" },
+  "repository": { "type": "git", "url": "https://github.com/iancuileana83-lab/sentinelscan-monad.git", "directory": "packages/sentinelscan-sdk" },
+  "keywords": ["monad", "wallet-risk", "mcp", "agents", "smart-contracts"]
+}

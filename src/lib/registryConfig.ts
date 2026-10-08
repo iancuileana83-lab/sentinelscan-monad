@@ -6,6 +6,9 @@ export const REGISTRY_ADDRESS = '0xb0C3Be753788a5962DE52db929f49df02700AFd4';
 export const GUARD_ADDRESS = '0x6e124EB8B980ae3e1CB79f856b8dC0d6F691d5bD';
 export const GUARD_POLICY = { confirmScore: 40, blockScore: 70, minReportersToConfirm: 1, minReportersToBlock: 2 } as const;
 
+// RiskAwarePayout: an example contract that builds on RiskRegistry and GuardedPay (see contracts/examples).
+export const EXAMPLE_ADDRESS = '0x2145308E2932D126d461A4c1Aa583bF2cdf21e7e';
+
 // A fresh address created for the demo (its key was discarded). Two test wallets recorded signals about it.
 export const DEMO_TARGET = '0x3dc0Cc8bc1BbED963Fc2841b9a975Ab933A94F42';
 
@@ -13,6 +16,7 @@ export const DEMO_TARGET = '0x3dc0Cc8bc1BbED963Fc2841b9a975Ab933A94F42';
 export const KNOWN_LABELS: Record<string, string> = {
   [REGISTRY_ADDRESS.toLowerCase()]: 'RiskRegistry contract',
   [GUARD_ADDRESS.toLowerCase()]: 'GuardedPay contract',
+  [EXAMPLE_ADDRESS.toLowerCase()]: 'RiskAwarePayout (example contract)',
   [DEMO_TARGET.toLowerCase()]: 'Demo address (made for this demo)',
   '0x0228ba8c75b9eaf02fa06872028da9754b2c8874': 'Demo test reporter',
   '0x0c6b75389a0d48f2eb16cc91022728fb6cbe7fc5': 'Project test wallet',

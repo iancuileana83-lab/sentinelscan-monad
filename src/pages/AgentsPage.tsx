@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Copy, Loader2, Play, Plug, ShieldCheck } from 'lucide-react';
+import { Loader2, Play, Plug, ShieldCheck } from 'lucide-react';
 import AgentDemo from '@/components/AgentDemo';
 import { Card, ErrorNote } from '@/components/Card';
+import CodeBlock from '@/components/CodeBlock';
+import DeveloperGuide from '@/components/DeveloperGuide';
 import { REGISTRY_ADDRESS } from '@/lib/registryConfig';
 
 interface Tool {
@@ -16,6 +18,7 @@ const SAMPLES: Record<string, Record<string, string>> = {
   scan_wallet: { address: SAMPLE_ADDRESS },
   scan_transaction: { hash: SAMPLE_HASH },
   get_registry_signals: { address: SAMPLE_ADDRESS },
+  guard_quote: { address: SAMPLE_ADDRESS },
 };
 
 async function rpc(method: string, params?: unknown) {
@@ -27,32 +30,6 @@ async function rpc(method: string, params?: unknown) {
   const body = await res.json().catch(() => ({}));
   if (!res.ok || body.error) throw new Error(body.error?.message || `Request failed (${res.status})`);
   return body.result;
-}
-
-function CodeBlock({ code, label }: { code: string; label: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <div className="relative">
-      <pre className="overflow-x-auto rounded-lg bg-canvas p-3 pr-12 text-xs leading-relaxed text-ink2" aria-label={label}>
-        <code>{code}</code>
-      </pre>
-      <button
-        className="absolute right-2 top-2 rounded-md border border-line p-1.5 text-muted hover:bg-card2"
-        aria-label={`Copy ${label}`}
-        onClick={async () => {
-          try {
-            await navigator.clipboard.writeText(code);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-          } catch {
-            window.prompt('Copy this:', code);
-          }
-        }}
-      >
-        {copied ? <Check size={14} className="text-brand-ink" /> : <Copy size={14} />}
-      </button>
-    </div>
-  );
 }
 
 function Playground({ tools }: { tools: Tool[] }) {
@@ -173,7 +150,7 @@ export default function AgentsPage() {
       <div>
         <h1 className="text-xl font-semibold text-ink">For AI agents</h1>
         <p className="mt-1 text-sm text-muted">
-          The same scanner and registry reader, as read-only tools an AI agent can call. They never sign or send anything, and none of them records a signal.
+          The same scanner and registry reader, as read-only tools an AI agent can call. They never sign or send anything, and none of them records a signal. Developers get a TypeScript SDK and Solidity interfaces further down.
         </p>
       </div>
 
@@ -209,6 +186,8 @@ export default function AgentsPage() {
           This playground sends real JSON-RPC calls to this site&apos;s own MCP endpoint, the same ones an agent would send.
         </p>
       </Card>
+
+      <DeveloperGuide />
 
       <Card title="What agents get, and what they are protected from" icon={ShieldCheck}>
         <ul className="list-disc space-y-1.5 pl-5 text-sm text-muted">

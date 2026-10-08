@@ -23,6 +23,8 @@ wallet access when the page loads: the wallet code is only loaded after you clic
 ## The contracts
 
 - Both are verified on the Monad Testnet explorer, with the source in `contracts/` and tests in `test/`.
+- The example consumer `RiskAwarePayout` (`0x2145308E2932D126d461A4c1Aa583bF2cdf21e7e`) is also verified, has no owner, and keeps no funds. The website does not ask your wallet to call it.
+- The TypeScript SDK in `packages/sentinelscan-sdk` is read-only: it never signs or sends anything.
 - Neither has an owner, an admin or an upgrade path. Neither can take funds: RiskRegistry holds nothing and rejects funds sent to it, and GuardedPay forwards the attached MON to the recipient in the same transaction and keeps nothing.
 
 ## Keys and data
