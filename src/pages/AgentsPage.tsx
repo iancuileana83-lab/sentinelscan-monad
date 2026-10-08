@@ -160,7 +160,7 @@ function Playground({ tools }: { tools: Tool[] }) {
 export default function AgentsPage() {
   const [tools, setTools] = useState<Tool[] | null>(null);
   const [error, setError] = useState('');
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://monad-risk-signals.vercel.app';
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://sentinelscan-monad.vercel.app';
 
   useEffect(() => {
     rpc('tools/list')

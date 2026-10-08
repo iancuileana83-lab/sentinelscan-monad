@@ -3,6 +3,9 @@
 SentinelScan on Monad is an open-source hackathon project that runs on **Monad Testnet only**
 (chain ID 10143). Testnet tokens have no value.
 
+Live app: https://sentinelscan-monad.vercel.app (the same deployment is also served at
+https://monad-risk-signals.vercel.app). Source: https://github.com/iancuileana83-lab/sentinelscan-monad.
+
 ## What the website can ask your wallet to do
 
 Only these, and only after you click a button and approve it in your wallet:

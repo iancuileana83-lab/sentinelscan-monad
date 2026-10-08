@@ -11,7 +11,7 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 
 const args = process.argv.slice(2);
 const urlFlag = args.indexOf('--url');
-const url = urlFlag >= 0 ? args.splice(urlFlag, 2)[1] : 'https://monad-risk-signals.vercel.app/api/mcp';
+const url = urlFlag >= 0 ? args.splice(urlFlag, 2)[1] : 'https://sentinelscan-monad.vercel.app/api/mcp';
 const address = args[0] ?? '0x6f49a8f621353f12378d0046e7d7e4b9b249dc9e';
 
 const say = (text = '') => console.log(text);

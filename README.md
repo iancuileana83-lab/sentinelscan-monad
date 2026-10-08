@@ -5,7 +5,7 @@ can record a signal, a guard contract that reads the registry before it forwards
 radar, and read-only tools plus a real AI agent that checks an address before paying it. Built for the
 Monad Metropolis hackathon, track *Trust, Identity & AI Infrastructure*.
 
-**Live app:** https://monad-risk-signals.vercel.app (backup address: https://sentinelscan-monad.vercel.app)
+**Live app:** https://sentinelscan-monad.vercel.app (the same deployment is also served at https://monad-risk-signals.vercel.app)
 
 > **Testnet only.** Everything here runs on Monad Testnet (chain ID 10143). Testnet MON has no
 > real value, and the app never asks for real money. A score is a **signal, not a verdict**.
@@ -17,10 +17,11 @@ Monad Metropolis hackathon, track *Trust, Identity & AI Infrastructure*.
 3. **For AI agents** → *Run the agent* on the same address: a real model calls our tools, reads numbered evidence and refuses with cited reasons. It never sends money.
 4. **Live radar**: new blocks stream in, a few per second.
 
-Recording a signal or trying a guarded payment needs a browser wallet and testnet MON (free from https://faucet.monad.xyz).
-Note for judges: some wallets may flag this new `vercel.app` preview domain. That is a false positive that has been
-reported for review. Everything except those two wallet actions works without a wallet, the contracts and the source are
-verified and public, and if you do connect a wallet, please use a throwaway testnet account.
+Recording a signal or trying a guarded payment needs a browser wallet and free testnet MON (https://faucet.monad.xyz);
+everything else works without a wallet. Note for judges: an earlier wallet-security warning on this domain was a false
+positive, and Blockaid reviewed it and removed it. The alias `monad-risk-signals.vercel.app` serves the same deployment
+but was not part of that review, so if a wallet warns there, please use the main address. The contracts and the source are
+verified and public, and as with any testnet demo, please connect a throwaway account.
 
 ## The app
 
@@ -77,11 +78,11 @@ Four tools, all **read-only**: an agent cannot sign or send anything with them, 
 | `get_registry_signals` | Reporters in `RiskRegistry`, plain and reputation-weighted averages, last report time |
 | `guard_quote` | What GuardedPay would do for an address right now: allow, confirm or block |
 
-- **MCP server** (Streamable HTTP, stateless): `https://monad-risk-signals.vercel.app/api/mcp`
+- **MCP server** (Streamable HTTP, stateless): `https://sentinelscan-monad.vercel.app/api/mcp`
 - **Plain JSON**: `GET /api/agent-tools` returns the tool list with JSON schemas, and `POST /api/agent-tools` with `{"tool": "scan_wallet", "arguments": {"address": "0x..."}}` calls one.
 
 ```bash
-claude mcp add --transport http sentinelscan-monad https://monad-risk-signals.vercel.app/api/mcp
+claude mcp add --transport http sentinelscan-monad https://sentinelscan-monad.vercel.app/api/mcp
 node examples/agent-demo.mjs        # a scripted MCP client (no language model)
 ```
 
